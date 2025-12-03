@@ -57,16 +57,34 @@ async def main_async(args):
             logger.info("Running hardware tests...")
             await test_hardware(hardware, logger)
             
-        # For now, just keep running
-        logger.info("System ready. Press Ctrl+C to exit.")
-        
-        # TODO: Start UI and telemetry server here
-        # For now, just wait
-        try:
-            while True:
-                await asyncio.sleep(1)
-        except KeyboardInterrupt:
-            logger.info("Shutdown requested")
+        # Start UI if not in test mode
+        if not args.test:
+            logger.info("Starting UI...")
+            
+            # Import UI app
+            from monitoni.ui.app import VendingApp
+            
+            # Create and run app
+            app = VendingApp(
+                config=config,
+                hardware=hardware,
+                logger=logger
+            )
+            
+            # Set event loop for logger
+            loop = asyncio.get_event_loop()
+            logger.set_event_loop(loop)
+            
+            # Run app (blocking)
+            await app.async_run()
+        else:
+            # Test mode - just keep running
+            logger.info("Test mode complete. Press Ctrl+C to exit.")
+            try:
+                while True:
+                    await asyncio.sleep(1)
+            except KeyboardInterrupt:
+                logger.info("Shutdown requested")
             
     except Exception as e:
         logger.exception(f"Fatal error: {e}")
