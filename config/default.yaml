@@ -1,0 +1,166 @@
+# MoniToni Vending Machine - Default Configuration
+# This file contains default settings. Override with config/local.yaml
+
+# System Information
+system:
+  name: "MoniToni Vending Machine"
+  version: "1.0.0"
+  machine_id: "VM001"  # Override in local.yaml
+
+# Hardware Settings
+hardware:
+  # Modbus RTU Relay Controller
+  modbus:
+    enabled: true
+    port: "/dev/ttyUSB0"  # RS485 serial port
+    baudrate: 9600
+    slave_address: 1
+    timeout: 1.0
+    
+  # WLED LED Controller (ArtNet)
+  wled:
+    enabled: true
+    ip_address: "192.168.1.100"  # Override in local.yaml
+    universe: 0
+    fps: 30
+    pixel_count: 300  # Total LED count
+    
+  # GPIO Sensors
+  gpio:
+    enabled: true
+    door_sensor_pin: 17  # BCM pin number
+    door_sensor_pull: "up"  # up or down
+    door_sensor_active: "low"  # low or high
+    
+  # Audio
+  audio:
+    enabled: true
+    volume: 0.7  # 0.0 to 1.0
+    
+# Vending Configuration
+vending:
+  # Number of product levels
+  levels: 10
+  
+  # Motor control
+  motor:
+    relay_channel: 1  # Relay channel for motor
+    spin_delay_ms: 500  # Delay after button release
+    
+  # Door lock
+  door_lock:
+    relay_channels: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11]  # One per level
+    unlock_duration_s: 30  # Auto-lock after this time
+    
+  # Timings
+  timings:
+    sleep_timeout_s: 60  # Enter sleep mode after inactivity
+    door_alarm_delay_s: 10  # Alarm if door not closed
+    purchase_timeout_s: 120  # Cancel purchase after timeout
+    
+# LED Animations
+led:
+  # Pixel zone mapping for 10 levels (start, end)
+  zones:
+    - [0, 29]      # Level 1
+    - [30, 59]     # Level 2
+    - [60, 89]     # Level 3
+    - [90, 119]    # Level 4
+    - [120, 149]   # Level 5
+    - [150, 179]   # Level 6
+    - [180, 209]   # Level 7
+    - [210, 239]   # Level 8
+    - [240, 269]   # Level 9
+    - [270, 299]   # Level 10
+    
+  # Animation presets (RGB colors)
+  animations:
+    idle:
+      type: "solid"
+      color: [0, 150, 255]  # Blue
+      brightness: 0.8
+      
+    sleep:
+      type: "breathing"
+      color: [0, 50, 100]  # Dim blue
+      brightness: 0.2
+      speed: 2.0
+      
+    valid_purchase:
+      type: "rainbow_chase"
+      brightness: 1.0
+      speed: 1.5
+      duration_s: 3.0
+      
+    invalid_purchase:
+      type: "flash"
+      color: [255, 0, 0]  # Red
+      brightness: 1.0
+      flashes: 3
+      
+    door_alarm:
+      type: "flash"
+      color: [255, 100, 0]  # Orange
+      brightness: 1.0
+      speed: 2.0
+      
+    offline:
+      type: "solid"
+      color: [255, 0, 0]  # Red
+      brightness: 0.3
+      
+    level_highlight:
+      type: "zone_highlight"
+      color: [0, 255, 0]  # Green
+      brightness: 1.0
+
+# Audio Settings
+audio:
+  sounds:
+    valid_purchase: "assets/sounds/success.wav"
+    invalid_purchase: "assets/sounds/error.wav"
+    door_alarm: "assets/sounds/alarm.wav"
+
+# Purchase Server Integration
+purchase_server:
+  enabled: true
+  base_url: "http://localhost:5000"  # Override in local.yaml
+  endpoints:
+    check_purchase: "/api/purchase/check"
+    complete_purchase: "/api/purchase/complete"
+  poll_interval_s: 0.5  # How often to check for purchases
+  timeout_s: 5.0
+  retry_attempts: 3
+
+# Telemetry Server
+telemetry:
+  enabled: true
+  host: "0.0.0.0"  # Listen on all interfaces
+  port: 8000
+  debug_pin: "1234"  # Override in local.yaml!
+  
+# Database
+database:
+  path: "data/monitoni.db"
+  
+# Logging
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  console: true
+  file: true
+  file_path: "logs/monitoni.log"
+  max_file_size_mb: 10
+  backup_count: 5
+  
+# UI Settings
+ui:
+  screen_width: 400
+  screen_height: 1280
+  fullscreen: true
+  theme: "Dark"
+  primary_palette: "Blue"
+  
+# Watchdog
+watchdog:
+  enabled: true
+  timeout_s: 60  # Reboot if no response for this long

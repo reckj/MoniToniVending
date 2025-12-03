@@ -1,0 +1,15 @@
+# MoniToni Vending Machine - Local Configuration
+# Copy this file to local.yaml and customize for your machine
+
+system:
+  machine_id: "VM001"  # Unique identifier for this machine
+
+hardware:
+  wled:
+    ip_address: "192.168.1.100"  # Your WLED controller IP
+    
+purchase_server:
+  base_url: "http://your-server:5000"  # Your purchase server URL
+  
+telemetry:
+  debug_pin: "your-secure-pin"  # Change this!

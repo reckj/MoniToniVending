@@ -1,0 +1,122 @@
+# Vending Machine System Notes
+
+## System Overview
+This system consists of vending machines and their telemetry frontend server, designed for scalability, resilience, modularity, and maintenance free operation (no updates).
+
+### Vending Machine
+- **Platform**: Raspberry Pi running Python. Later possible transition to LattePanda 3 Delta
+- **Core Responsibilities**:
+  - Manage vending hardware (motor, relays, LED strip).
+  - Provide a user interface (UI) for customer interactions and setup/debug operations running on a touchscreen.
+  - Log all actions and errors locally in an SQLite database.
+  
+
+### Telemetry Server
+- **Platform**: Same Raspberry Pi running a FastAPI-based server. Later possible transition to LattePanda 3 Delta
+- **Core Responsibilities**:
+  - Monitor and controle vending machine.
+  - Run a server to access telemetry frontend externaly
+  - Provide RESTful API endpoints for telemetry, logs, and debug commands.
+
+### Hardware
+- **Platform**: Raspberry Pi 5 - 8GB or LattePanda 3 Delta
+- **Components**:
+  - Waveshare Isolated RS232 / RS485 / CAN / CAN FD Expansion Board or RS485 Connector Expansion Shield for LattePanda Alpha&Delta
+  - Waveshare 7.9inch HDMI Capacitive Touch Display 400x1280
+  - Modbus RTU 32-Ch Relay Module, RS485 Interface
+  - Limit Switch Sensor
+  - Gledopto ESP32 WLED Digital LED Controller for Digital Light Strips - Elite 2D-EXMU with Ethernet Connection
+
+
+---
+
+## Core Components
+
+### Vending Machine
+1. **UI**:
+   - Built with KivyMD.
+   - Two primary screens:
+     - **Main Screen**: For customer interactions (product selection, purchase process).
+     - **Debug/Setup Screen**: For testing and configuring hardware components & initial setup (led mapping, hardware tests, sound level, delays).
+
+2. **Hardware Integration**:
+   - **Motor**:
+     - Spins while the UI button is pressed.
+     - Adds a configurable delay after release for proper vending.
+   - **LED Strip**:
+     - Controlled via an ESP32 over ArtNet communication (WLED).
+     - Supports dynamic colors and animations.
+     - User Feedback through light and animations
+   - **Relays**:
+     - Modbus RTU communication for hardware control (spindles, locks).
+   - **Sounds**:
+     - Controlled via speaker conntected to touchscreen - audio via hdmi. Used for user feedback (door open, purchase confirmation/unvalid)
+   - **Sensors**:
+     - Monitor door status. From Platform GPIO - non-blocking code
+
+3. **Local Database**:
+   - **Type**: SQLite.
+   - **Purpose**: Logs all actions and errors in a structured format.
+   - **Data Schema**:
+     - `logs`: Stores timestamp, purchase ID (created for each purchase), log level, message, and details.
+
+4. **Purchase Authentication**:
+   - Checks continiously for valid purchase responses from purchase server 
+
+5. **Behaviour**:
+   - Goes into sleep mode after a configured delay w/ dimmed Lights and Display until new touchinput
+   - Watchdog Timer to reboot System when non responding or crash
+   - Reacts to unclosed door after configured delay with light and sound alarm
+   - Relocks the door & cancels purchase after configured delay
+   - Only sends the purchase process finished message to purchase server after door was opened and closed again after being unlocked
+
+---
+
+### Telemetry Server
+1. **WebSocket Server**:
+   - Manages active connections with external telemetry users.
+   - Tracks the status of the machine.
+   - hosts telemetry frontend to be accessed by users
+   - provides API endpoints:
+	- download logs to and upload qr-purchase-codes from external user
+	- hardware configuration & initial setup
+	- debug and control over machine functions
+
+
+---
+
+## Debug and Setup Mode
+1. **Purpose**:
+   - Enables testing and debugging of hardware components without disrupting vending operations.
+   - Provides a safe way to verify hardware functionality during setup and maintenance.
+
+2. **Access Points - PIN entry required**:
+   - **Local UI**:
+     - A dedicated debug/setup screen in the KivyMD application.
+   - **Telemetry Server**:
+     - Accessible through telemetry frontend for external users
+
+3. **Supported Commands**:
+   - **Motor**:
+	- Start/stop.
+	- set delay
+   - **LED Strip**:
+	- Set brightness or turn off.
+	- configure action/state animations/colors (on, sleep-dim, invalid purchase, offline, valid purchase, door open alarm)
+	- set stripe length & map pixel zones for 10 vending levels
+   - **Sound**:
+	- Turn on/off.
+	- Level
+	- choose action/state sounds (invalid purchase, valid purchase, door open alarm)
+   - **Relays**:
+	- Activate/deactivate specific relay channels.
+	- cascade through all relays
+   - **Sensors**:
+	- Display door sensor state 
+   - **Network**:
+	- Display network state & info
+   - **Debug**:
+	- View or download logs
+   - **Machine Data**:
+	- Display system data (completed purchases, failed purchases, lost network connection incidents, purchase server not responding incidents)
+---
