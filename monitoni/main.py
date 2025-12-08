@@ -63,6 +63,36 @@ async def main_async(args):
             
         # Start UI if not in test mode
         if not args.test:
+            # Start telemetry server in background thread
+            logger.info("Starting telemetry server...")
+            
+            from monitoni.telemetry.server import create_telemetry_server
+            import threading
+            import uvicorn
+            
+            telemetry = create_telemetry_server(
+                config=config,
+                hardware=hardware,
+                database=db,
+                logger=logger
+            )
+            
+            # Get telemetry port from config or use default
+            telemetry_port = getattr(config, 'telemetry_port', 8080)
+            
+            def run_telemetry():
+                uvicorn.run(
+                    telemetry.app,
+                    host="0.0.0.0",
+                    port=telemetry_port,
+                    log_level="warning"
+                )
+            
+            telemetry_thread = threading.Thread(target=run_telemetry, daemon=True)
+            telemetry_thread.start()
+            logger.info(f"Telemetry server running on http://0.0.0.0:{telemetry_port}")
+            
+            # Start UI
             logger.info("Starting UI...")
             
             # Import UI app
