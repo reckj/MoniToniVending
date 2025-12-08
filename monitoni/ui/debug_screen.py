@@ -31,6 +31,24 @@ from monitoni.ui.icons import register_icon_font, get_icon
 register_icon_font()
 
 
+def run_async(coro):
+    """Run an async coroutine from a sync context (e.g., Kivy callback).
+    
+    This is needed because Kivy's event loop doesn't integrate with asyncio by default.
+    """
+    import threading
+    def run_in_thread():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(coro)
+        finally:
+            loop.close()
+    
+    thread = threading.Thread(target=run_in_thread, daemon=True)
+    thread.start()
+
+
 class PINKeypad(BoxLayout):
     """Numeric keypad for PIN entry."""
     
@@ -702,7 +720,7 @@ class DebugScreen(Screen):
             text="Test All Relays (Cascade)",
             size_hint=(1, None),
             height="50dp",
-            on_release=lambda x: asyncio.create_task(self._test_all_relays())
+            on_release=lambda x: run_async(self._test_all_relays())
         )
         section.add_content(test_all_btn)
         
@@ -720,7 +738,7 @@ class DebugScreen(Screen):
                 size_hint=(1, None),
                 height="40dp",
                 font_size="14sp",
-                on_release=lambda x, ch=i: asyncio.create_task(self._toggle_relay(ch))
+                on_release=lambda x, ch=i: run_async(self._toggle_relay(ch))
             )
             relay_grid.add_widget(btn)
             

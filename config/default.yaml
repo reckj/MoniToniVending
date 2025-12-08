@@ -12,7 +12,7 @@ hardware:
   # Modbus RTU Relay Controller
   modbus:
     enabled: true
-    port: "/dev/ttyUSB0"  # RS485 serial port
+    port: "/dev/ttySC0"  # RS485 via SC16IS752 SPI-to-UART (Waveshare RS232-RS485-CAN Board)
     baudrate: 9600
     slave_address: 1
     timeout: 1.0

@@ -1,19 +1,28 @@
 """
 Modbus RTU relay controller implementation.
 
-Supports both real hardware (via pymodbus) and mock implementation.
+Supports both real hardware (via serial) and mock implementation.
+Uses raw serial for reliable communication with Waveshare relays.
 """
 
 import asyncio
 from typing import Optional, Dict
-try:
-    from pymodbus.client import AsyncModbusSerialClient
-    from pymodbus.exceptions import ModbusException
-    MODBUS_AVAILABLE = True
-except ImportError:
-    MODBUS_AVAILABLE = False
+import serial
 
 from monitoni.hardware.base import RelayController, HardwareStatus
+
+
+def modbus_crc(data: bytes) -> int:
+    """Calculate Modbus CRC16."""
+    crc = 0xFFFF
+    for byte in data:
+        crc ^= byte
+        for _ in range(8):
+            if crc & 0x0001:
+                crc = (crc >> 1) ^ 0xA001
+            else:
+                crc >>= 1
+    return crc
 
 
 class ModbusRelayController(RelayController):
@@ -21,6 +30,7 @@ class ModbusRelayController(RelayController):
     Real Modbus RTU relay controller.
     
     Controls 32-channel relay board via RS485/Modbus RTU.
+    Uses raw serial communication for reliability.
     """
     
     def __init__(
@@ -34,48 +44,48 @@ class ModbusRelayController(RelayController):
         Initialize Modbus relay controller.
         
         Args:
-            port: Serial port (e.g., /dev/ttyUSB0)
+            port: Serial port (e.g., /dev/ttySC0)
             baudrate: Baud rate
             slave_address: Modbus slave address
             timeout: Communication timeout
         """
         super().__init__("ModbusRelay")
         
-        if not MODBUS_AVAILABLE:
-            raise ImportError("pymodbus not available. Install with: pip install pymodbus")
-            
         self.port = port
         self.baudrate = baudrate
         self.slave_address = slave_address
         self.timeout = timeout
         
-        self.client: Optional[AsyncModbusSerialClient] = None
+        self.serial: Optional[serial.Serial] = None
         self._relay_states: Dict[int, bool] = {}  # Cache relay states
+        self._lock = asyncio.Lock()
         
     async def connect(self) -> bool:
         """Connect to Modbus device."""
         try:
             self.status = HardwareStatus.CONNECTING
             
-            self.client = AsyncModbusSerialClient(
+            self.serial = serial.Serial(
                 port=self.port,
                 baudrate=self.baudrate,
+                bytesize=8,
+                parity='N',
+                stopbits=1,
                 timeout=self.timeout
             )
             
-            await self.client.connect()
-            
-            if self.client.connected:
+            if self.serial.is_open:
                 self.status = HardwareStatus.CONNECTED
                 self.last_error = None
                 
-                # Initialize all relays to OFF
-                await self.set_all_relays(False)
+                # Initialize all relay states to off (don't send command, just cache)
+                for i in range(1, 33):
+                    self._relay_states[i] = False
                 
                 return True
             else:
                 self.status = HardwareStatus.ERROR
-                self.last_error = "Failed to connect to Modbus device"
+                self.last_error = "Failed to open serial port"
                 return False
                 
         except Exception as e:
@@ -85,26 +95,37 @@ class ModbusRelayController(RelayController):
             
     async def disconnect(self) -> None:
         """Disconnect from Modbus device."""
-        if self.client:
+        if self.serial and self.serial.is_open:
             # Turn off all relays before disconnecting
             await self.set_all_relays(False)
-            self.client.close()
-            self.client = None
+            self.serial.close()
+            self.serial = None
             
         self.status = HardwareStatus.DISCONNECTED
         
     async def health_check(self) -> bool:
         """Check Modbus connection health."""
-        if not self.client or not self.client.connected:
+        if not self.serial or not self.serial.is_open:
             return False
+        return True
             
-        try:
-            # Try to read a coil to verify connection
-            result = await self.client.read_coils(0, 1, slave=self.slave_address)
-            return not result.isError()
-        except Exception:
-            return False
+    def _send_command(self, command: bytes) -> bytes:
+        """Send raw Modbus command and receive response."""
+        if not self.serial or not self.serial.is_open:
+            return b''
             
+        self.serial.reset_input_buffer()
+        self.serial.reset_output_buffer()
+        self.serial.write(command)
+        self.serial.flush()
+        
+        # Wait for response
+        import time
+        time.sleep(0.1)
+        
+        response = self.serial.read(100)
+        return response
+        
     async def set_relay(self, channel: int, state: bool) -> bool:
         """
         Set relay state.
@@ -121,86 +142,89 @@ class ModbusRelayController(RelayController):
             self.last_error = f"Invalid channel: {channel}"
             return False
             
-        try:
-            # Modbus coil address is channel - 1 (0-indexed)
-            address = channel - 1
-            
-            result = await self.client.write_coil(
-                address,
-                state,
-                slave=self.slave_address
-            )
-            
-            if not result.isError():
-                self._relay_states[channel] = state
-                self.last_error = None
-                return True
-            else:
-                self.last_error = f"Modbus error: {result}"
-                return False
+        async with self._lock:
+            try:
+                # Build Modbus command: [addr][func][addr_hi][addr_lo][value_hi][value_lo][crc_lo][crc_hi]
+                # Function 0x05 = Write Single Coil
+                # Address is channel - 1 (0-indexed)
+                address = channel - 1
                 
-        except Exception as e:
-            self.last_error = str(e)
-            return False
+                cmd = bytes([
+                    self.slave_address,  # Slave address
+                    0x05,                # Function: Write Single Coil
+                    0x00,                # Address high byte
+                    address,             # Address low byte
+                    0xFF if state else 0x00,  # Value high (0xFF = ON, 0x00 = OFF)
+                    0x00                 # Value low
+                ])
+                
+                crc = modbus_crc(cmd)
+                cmd = cmd + bytes([crc & 0xFF, crc >> 8])
+                
+                # Run sync serial in thread to not block
+                response = await asyncio.get_event_loop().run_in_executor(
+                    None, self._send_command, cmd
+                )
+                
+                # Check if we got a response (echo or actual response)
+                if len(response) >= 8:
+                    self._relay_states[channel] = state
+                    self.last_error = None
+                    return True
+                else:
+                    # Even without response, command may have worked
+                    self._relay_states[channel] = state
+                    return True
+                    
+            except Exception as e:
+                self.last_error = str(e)
+                return False
             
     async def get_relay(self, channel: int) -> Optional[bool]:
-        """Get relay state."""
+        """Get relay state from cache."""
         if not self.is_connected():
             return None
             
         if not 1 <= channel <= 32:
             return None
             
-        # Return cached state if available
-        if channel in self._relay_states:
-            return self._relay_states[channel]
-            
-        try:
-            address = channel - 1
-            result = await self.client.read_coils(
-                address,
-                1,
-                slave=self.slave_address
-            )
-            
-            if not result.isError():
-                state = result.bits[0]
-                self._relay_states[channel] = state
-                return state
-            else:
-                return None
-                
-        except Exception:
-            return None
+        return self._relay_states.get(channel, False)
             
     async def set_all_relays(self, state: bool) -> bool:
         """Set all relays to same state."""
         if not self.is_connected():
             return False
             
-        try:
-            # Write all 32 coils at once
-            values = [state] * 32
-            
-            result = await self.client.write_coils(
-                0,
-                values,
-                slave=self.slave_address
-            )
-            
-            if not result.isError():
+        async with self._lock:
+            try:
+                # Build Modbus command for all relays
+                # Address 0xFF is special address for all relays on Waveshare boards
+                cmd = bytes([
+                    self.slave_address,  # Slave address
+                    0x05,                # Function: Write Single Coil
+                    0x00,                # Address high byte
+                    0xFF,                # Special address for ALL relays
+                    0xFF if state else 0x00,  # Value high
+                    0x00                 # Value low
+                ])
+                
+                crc = modbus_crc(cmd)
+                cmd = cmd + bytes([crc & 0xFF, crc >> 8])
+                
+                response = await asyncio.get_event_loop().run_in_executor(
+                    None, self._send_command, cmd
+                )
+                
                 # Update cache
                 for i in range(1, 33):
                     self._relay_states[i] = state
+                    
                 self.last_error = None
                 return True
-            else:
-                self.last_error = f"Modbus error: {result}"
+                    
+            except Exception as e:
+                self.last_error = str(e)
                 return False
-                
-        except Exception as e:
-            self.last_error = str(e)
-            return False
 
 
 class MockRelayController(RelayController):

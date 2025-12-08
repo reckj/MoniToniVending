@@ -9,7 +9,8 @@ import serial
 import time
 
 # Configuration - try different ports
-ports_to_try = ['/dev/ttyAMA0', '/dev/ttyAMA10']
+# RS232-RS485-CAN Board uses SC16IS752 SPI-to-UART chip -> /dev/ttySC0, /dev/ttySC1
+ports_to_try = ['/dev/ttySC0', '/dev/ttySC1', '/dev/ttyAMA0']
 baudrate = 9600
 
 # Waveshare 32CH relay commands (from their wiki)
