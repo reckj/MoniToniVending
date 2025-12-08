@@ -28,9 +28,9 @@ hardware:
   # GPIO Sensors
   gpio:
     enabled: true
-    door_sensor_pin: 17  # BCM pin number
-    door_sensor_pull: "up"  # up or down
-    door_sensor_active: "low"  # low or high
+    door_sensor_pin: 5  # BCM GPIO 5 (Pin 29) - GPIO 4 used by 1-Wire overlay
+    door_sensor_pull: "up"  # up or down (internal pull resistor)
+    door_sensor_active: "low"  # low = door open when pin is LOW (switch closes to ground)
     
   # Audio
   audio:
