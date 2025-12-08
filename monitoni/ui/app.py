@@ -29,7 +29,7 @@ class VendingApp(MDApp):
     
     def __init__(
         self,
-        config: Config,
+        app_config: Config,
         hardware: HardwareManager,
         logger: Logger,
         **kwargs
@@ -38,22 +38,22 @@ class VendingApp(MDApp):
         Initialize vending app.
         
         Args:
-            config: System configuration
+            app_config: System configuration
             hardware: Hardware manager
             logger: Logger instance
         """
         super().__init__(**kwargs)
         
-        self.config = config
+        self.app_config = app_config
         self.hardware = hardware
         self.logger = logger
         
         # State machine
         self.state_machine = PurchaseStateMachine(
-            sleep_timeout=config.vending.timings.sleep_timeout_s,
-            purchase_timeout=config.vending.timings.purchase_timeout_s,
-            door_alarm_delay=config.vending.timings.door_alarm_delay_s,
-            door_unlock_duration=config.vending.door_lock.unlock_duration_s
+            sleep_timeout=app_config.vending.timings.sleep_timeout_s,
+            purchase_timeout=app_config.vending.timings.purchase_timeout_s,
+            door_alarm_delay=app_config.vending.timings.door_alarm_delay_s,
+            door_unlock_duration=app_config.vending.door_lock.unlock_duration_s
         )
         
         # Screen manager
@@ -65,14 +65,14 @@ class VendingApp(MDApp):
     def build(self):
         """Build the application UI."""
         # Set theme
-        self.theme_cls.theme_style = self.config.ui.theme
-        self.theme_cls.primary_palette = self.config.ui.primary_palette
+        self.theme_cls.theme_style = self.app_config.ui.theme
+        self.theme_cls.primary_palette = self.app_config.ui.primary_palette
         
         # Configure window
-        if self.config.ui.fullscreen:
+        if self.app_config.ui.fullscreen:
             Window.fullscreen = 'auto'
         else:
-            Window.size = (self.config.ui.screen_width, self.config.ui.screen_height)
+            Window.size = (self.app_config.ui.screen_width, self.app_config.ui.screen_height)
             
         # Create screen manager
         self.screen_manager = ScreenManager(transition=FadeTransition())
@@ -84,7 +84,7 @@ class VendingApp(MDApp):
         self.screen_manager.add_widget(CustomerScreen(
             name='customer',
             app=self,
-            config=self.config,
+            app_config=self.app_config,
             hardware=self.hardware,
             state_machine=self.state_machine,
             logger=self.logger
@@ -93,7 +93,7 @@ class VendingApp(MDApp):
         self.screen_manager.add_widget(DebugScreen(
             name='debug',
             app=self,
-            config=self.config,
+            app_config=self.app_config,
             hardware=self.hardware,
             logger=self.logger
         ))
@@ -197,3 +197,4 @@ class VendingApp(MDApp):
         # Cancel state machine task
         if self._state_task and not self._state_task.done():
             self._state_task.cancel()
+

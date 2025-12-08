@@ -4,6 +4,10 @@ MoniToni Vending Machine System - Main Entry Point
 Starts the vending machine application with hardware control and telemetry server.
 """
 
+# Disable Kivy's argument parser before any Kivy imports
+import os
+os.environ['KIVY_NO_ARGS'] = '1'
+
 import argparse
 import asyncio
 import sys
@@ -66,7 +70,7 @@ async def main_async(args):
             
             # Create and run app
             app = VendingApp(
-                config=config,
+                app_config=config,
                 hardware=hardware,
                 logger=logger
             )

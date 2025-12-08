@@ -172,6 +172,48 @@ class WLEDController(LEDController):
             self.last_error = str(e)
             return False
             
+    async def set_zone_pixels(
+        self,
+        start: int,
+        end: int,
+        r: int,
+        g: int,
+        b: int,
+        brightness: float = 1.0
+    ) -> bool:
+        """Set color for specific pixel range (direct control)."""
+        if not self.is_connected():
+            return False
+            
+        try:
+            # Apply brightness
+            r = int(r * brightness)
+            g = int(g * brightness)
+            b = int(b * brightness)
+            
+            # Clamp to valid range
+            start = max(0, min(start, self.pixel_count - 1))
+            end = max(0, min(end, self.pixel_count - 1))
+            
+            # Get current pixel data
+            current_pixels = list(self.artnet.get())
+            
+            # Update zone pixels
+            for i in range(start, end + 1):
+                idx = i * 3
+                current_pixels[idx] = r
+                current_pixels[idx + 1] = g
+                current_pixels[idx + 2] = b
+                
+            self.artnet.set(current_pixels)
+            self.artnet.show()
+            
+            return True
+            
+        except Exception as e:
+            self.last_error = str(e)
+            return False
+            
     async def play_animation(self, animation_name: str) -> bool:
         """Play predefined animation."""
         # Stop any running animation
@@ -335,6 +377,33 @@ class MockLEDController(LEDController):
             self._pixels[i] = (r, g, b)
             
         print(f"[MOCK] LED: Zone {zone} set to RGB({r}, {g}, {b})")
+        return True
+        
+    async def set_zone_pixels(
+        self,
+        start: int,
+        end: int,
+        r: int,
+        g: int,
+        b: int,
+        brightness: float = 1.0
+    ) -> bool:
+        """Set color for specific pixel range (direct control)."""
+        if not self.is_connected():
+            return False
+            
+        r = int(r * brightness)
+        g = int(g * brightness)
+        b = int(b * brightness)
+        
+        # Clamp to valid range
+        start = max(0, min(start, self.pixel_count - 1))
+        end = max(0, min(end, self.pixel_count - 1))
+        
+        for i in range(start, end + 1):
+            self._pixels[i] = (r, g, b)
+            
+        print(f"[MOCK] LED: Pixels {start}-{end} set to RGB({r}, {g}, {b})")
         return True
         
     async def play_animation(self, animation_name: str) -> bool:

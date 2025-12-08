@@ -2,72 +2,369 @@
 Debug and setup screen for hardware testing and configuration.
 
 PIN-protected interface for operators and maintenance.
+Uses simple scrollable sections instead of expansion panels to avoid overlap issues.
 """
 
 import asyncio
+import yaml
+from pathlib import Path
 from kivy.uix.screenmanager import Screen
 from kivy.uix.scrollview import ScrollView
-from kivy.uix.gridlayout import GridLayout
 from kivy.uix.boxlayout import BoxLayout
-from kivy.properties import StringProperty
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.slider import Slider
+from kivy.uix.widget import Widget
+from kivy.properties import StringProperty, NumericProperty
+from kivy.graphics import Color, Rectangle, RoundedRectangle
 from kivymd.uix.label import MDLabel
 from kivymd.uix.button import MDRaisedButton, MDFlatButton, MDIconButton
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.dialog import MDDialog
-from kivymd.uix.list import MDList, OneLineListItem
-from kivymd.uix.expansionpanel import MDExpansionPanel, MDExpansionPanelOneLine
-from kivymd.uix.slider import MDSlider
+from kivymd.uix.card import MDCard
 
 from monitoni.core.config import Config
 from monitoni.core.logger import Logger
 from monitoni.hardware.manager import HardwareManager
 
+# Register icon font
+from monitoni.ui.icons import register_icon_font, get_icon
+register_icon_font()
+
+
+class PINKeypad(BoxLayout):
+    """Numeric keypad for PIN entry."""
+    
+    def __init__(self, on_digit, on_clear, on_backspace, **kwargs):
+        super().__init__(**kwargs)
+        self.orientation = 'vertical'
+        self.spacing = "10dp"
+        self.size_hint = (1, None)
+        self.height = "320dp"
+        
+        self.on_digit = on_digit
+        self.on_clear = on_clear
+        self.on_backspace = on_backspace
+        
+        # Number pad layout (3x4 grid)
+        button_height = "70dp"
+        
+        # Row 1: 1 2 3
+        row1 = BoxLayout(spacing="10dp", size_hint=(1, None), height=button_height)
+        for digit in ["1", "2", "3"]:
+            btn = MDRaisedButton(
+                text=digit,
+                size_hint=(1, 1),
+                font_size="28sp",
+                on_release=lambda x, d=digit: self.on_digit(d)
+            )
+            row1.add_widget(btn)
+        self.add_widget(row1)
+        
+        # Row 2: 4 5 6
+        row2 = BoxLayout(spacing="10dp", size_hint=(1, None), height=button_height)
+        for digit in ["4", "5", "6"]:
+            btn = MDRaisedButton(
+                text=digit,
+                size_hint=(1, 1),
+                font_size="28sp",
+                on_release=lambda x, d=digit: self.on_digit(d)
+            )
+            row2.add_widget(btn)
+        self.add_widget(row2)
+        
+        # Row 3: 7 8 9
+        row3 = BoxLayout(spacing="10dp", size_hint=(1, None), height=button_height)
+        for digit in ["7", "8", "9"]:
+            btn = MDRaisedButton(
+                text=digit,
+                size_hint=(1, 1),
+                font_size="28sp",
+                on_release=lambda x, d=digit: self.on_digit(d)
+            )
+            row3.add_widget(btn)
+        self.add_widget(row3)
+        
+        # Row 4: Clear 0 Backspace
+        row4 = BoxLayout(spacing="10dp", size_hint=(1, None), height=button_height)
+        
+        clear_btn = MDRaisedButton(
+            text="C",
+            size_hint=(1, 1),
+            font_size="24sp",
+            md_bg_color=(0.6, 0.3, 0.3, 1),  # Red-ish
+            on_release=lambda x: self.on_clear()
+        )
+        row4.add_widget(clear_btn)
+        
+        zero_btn = MDRaisedButton(
+            text="0",
+            size_hint=(1, 1),
+            font_size="28sp",
+            on_release=lambda x: self.on_digit("0")
+        )
+        row4.add_widget(zero_btn)
+        
+        backspace_btn = MDRaisedButton(
+            text="<",
+            size_hint=(1, 1),
+            font_size="28sp",
+            md_bg_color=(0.4, 0.4, 0.4, 1),
+            on_release=lambda x: self.on_backspace()
+        )
+        row4.add_widget(backspace_btn)
+        
+        self.add_widget(row4)
+
+
+class PINDialogContent(BoxLayout):
+    """Content for PIN dialog with display and keypad."""
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.orientation = 'vertical'
+        self.spacing = "15dp"
+        self.size_hint_y = None
+        self.height = "420dp"
+        
+        self.pin_value = ""
+        
+        # PIN display (shows dots for entered digits)
+        self.display = MDLabel(
+            text="_ _ _ _",
+            halign='center',
+            font_style='H4',
+            size_hint=(1, None),
+            height="60dp",
+            theme_text_color='Custom',
+            text_color=(1, 1, 1, 1)
+        )
+        self.add_widget(self.display)
+        
+        # Error label (hidden initially)
+        self.error_label = MDLabel(
+            text="",
+            halign='center',
+            font_style='Body2',
+            size_hint=(1, None),
+            height="30dp",
+            theme_text_color='Custom',
+            text_color=(1, 0.3, 0.3, 1)  # Red
+        )
+        self.add_widget(self.error_label)
+        
+        # Keypad
+        self.keypad = PINKeypad(
+            on_digit=self._on_digit,
+            on_clear=self._on_clear,
+            on_backspace=self._on_backspace
+        )
+        self.add_widget(self.keypad)
+        
+    def _on_digit(self, digit: str):
+        """Handle digit press."""
+        if len(self.pin_value) < 8:  # Max 8 digits
+            self.pin_value += digit
+            self._update_display()
+            self.error_label.text = ""
+            
+    def _on_clear(self):
+        """Handle clear press."""
+        self.pin_value = ""
+        self._update_display()
+        self.error_label.text = ""
+        
+    def _on_backspace(self):
+        """Handle backspace press."""
+        if self.pin_value:
+            self.pin_value = self.pin_value[:-1]
+            self._update_display()
+            self.error_label.text = ""
+            
+    def _update_display(self):
+        """Update the PIN display."""
+        if self.pin_value:
+            # Show filled circles for entered digits
+            dots = "  ".join(["O"] * len(self.pin_value))
+            # Add dashes for remaining digits (assuming 4-digit PIN)
+            remaining = 4 - len(self.pin_value)
+            if remaining > 0:
+                dots += "  " + "  ".join(["-"] * remaining)
+            self.display.text = dots
+        else:
+            self.display.text = "_ _ _ _"
+            
+    def show_error(self, message: str):
+        """Show error message."""
+        self.error_label.text = message
+        self.pin_value = ""
+        self._update_display()
+        
+    def get_pin(self) -> str:
+        """Get entered PIN."""
+        return self.pin_value
+
 
 class PINDialog(MDDialog):
-    """Dialog for PIN entry."""
+    """Dialog for PIN entry with onscreen keypad."""
     
-    def __init__(self, on_success, **kwargs):
+    def __init__(self, on_success, on_cancel=None, **kwargs):
         """
         Initialize PIN dialog.
         
         Args:
             on_success: Callback when correct PIN entered
+            on_cancel: Callback when dialog is cancelled
         """
         self.on_success = on_success
+        self.on_cancel_callback = on_cancel
+        self.expected_pin = "1234"
         
-        # PIN text field
-        self.pin_field = MDTextField(
-            hint_text="Enter PIN",
-            password=True,
-            size_hint_x=0.8
-        )
+        # Create keypad content
+        self.content = PINDialogContent()
         
         super().__init__(
-            title="Debug Mode Access",
+            title="Enter PIN",
             type="custom",
-            content_cls=self.pin_field,
+            content_cls=self.content,
+            auto_dismiss=False,  # Prevent closing by clicking outside
             buttons=[
                 MDFlatButton(
                     text="CANCEL",
-                    on_release=lambda x: self.dismiss()
+                    on_release=self._on_cancel
                 ),
                 MDRaisedButton(
                     text="ENTER",
+                    md_bg_color=(0.2, 0.6, 0.2, 1),
                     on_release=self._check_pin
                 )
             ],
             **kwargs
         )
         
+    def _on_cancel(self, instance):
+        """Handle cancel button press."""
+        self.dismiss()
+        if self.on_cancel_callback:
+            self.on_cancel_callback()
+        
     def _check_pin(self, instance):
         """Check if entered PIN is correct."""
-        if self.pin_field.text == self.expected_pin:
+        entered_pin = self.content.get_pin()
+        if entered_pin == self.expected_pin:
             self.dismiss()
             self.on_success()
         else:
-            self.pin_field.error = True
-            self.pin_field.helper_text = "Incorrect PIN"
+            self.content.show_error("Incorrect PIN")
+
+
+class LargeSlider(BoxLayout):
+    """Large touch-friendly slider with label."""
+    
+    def __init__(
+        self, 
+        label_text: str, 
+        min_val: float = 0, 
+        max_val: float = 1, 
+        default_val: float = 0.7,
+        on_change=None,
+        **kwargs
+    ):
+        super().__init__(**kwargs)
+        self.orientation = 'vertical'
+        self.size_hint = (1, None)
+        self.height = "100dp"
+        self.spacing = "5dp"
+        self.on_change_callback = on_change
+        
+        # Label row with value display
+        label_row = BoxLayout(size_hint=(1, None), height="30dp")
+        
+        self.label = MDLabel(
+            text=label_text,
+            size_hint=(0.7, 1)
+        )
+        label_row.add_widget(self.label)
+        
+        self.value_label = MDLabel(
+            text=f"{int(default_val * 100)}%",
+            halign='right',
+            size_hint=(0.3, 1)
+        )
+        label_row.add_widget(self.value_label)
+        self.add_widget(label_row)
+        
+        # Large slider with increased touch area
+        slider_container = BoxLayout(size_hint=(1, None), height="60dp", padding=("0dp", "15dp"))
+        
+        self.slider = Slider(
+            min=min_val,
+            max=max_val,
+            value=default_val,
+            size_hint=(1, 1),
+            cursor_size=("40dp", "40dp"),
+            value_track=True,
+            value_track_color=(0.2, 0.6, 1, 1),
+            value_track_width="8dp"
+        )
+        self.slider.bind(value=self._on_value_change)
+        slider_container.add_widget(self.slider)
+        self.add_widget(slider_container)
+        
+    def _on_value_change(self, instance, value):
+        """Handle slider value change."""
+        self.value_label.text = f"{int(value * 100)}%"
+        if self.on_change_callback:
+            self.on_change_callback(value)
             
+    def set_value(self, value):
+        """Set slider value."""
+        self.slider.value = value
+        self.value_label.text = f"{int(value * 100)}%"
+
+
+class SectionCard(MDCard):
+    """Section card with title and content."""
+    
+    def __init__(self, title: str, **kwargs):
+        super().__init__(**kwargs)
+        self.orientation = 'vertical'
+        self.size_hint = (1, None)
+        self.padding = "15dp"
+        self.spacing = "10dp"
+        self.md_bg_color = (0.12, 0.12, 0.12, 1)
+        self.radius = [10, 10, 10, 10]
+        
+        # Title
+        title_label = MDLabel(
+            text=title,
+            font_style='H6',
+            size_hint=(1, None),
+            height="35dp",
+            theme_text_color='Custom',
+            text_color=(0.3, 0.7, 1, 1)  # Blue accent
+        )
+        self.add_widget(title_label)
+        
+        # Content container
+        self.content = BoxLayout(
+            orientation='vertical',
+            spacing="10dp",
+            size_hint_y=None
+        )
+        self.content.bind(minimum_height=self.content.setter('height'))
+        self.add_widget(self.content)
+        
+        # Bind height to content
+        self.content.bind(height=self._update_height)
+        
+    def _update_height(self, *args):
+        """Update card height based on content."""
+        self.height = self.content.height + 60  # 60dp for title and padding
+        
+    def add_content(self, widget):
+        """Add widget to content area."""
+        self.content.add_widget(widget)
+
 
 class DebugScreen(Screen):
     """
@@ -79,7 +376,7 @@ class DebugScreen(Screen):
     def __init__(
         self,
         app,
-        config: Config,
+        app_config: Config,
         hardware: HardwareManager,
         logger: Logger,
         **kwargs
@@ -89,30 +386,36 @@ class DebugScreen(Screen):
         
         Args:
             app: Main application instance
-            config: System configuration
+            app_config: System configuration
             hardware: Hardware manager
             logger: Logger instance
         """
         super().__init__(**kwargs)
         
         self.app = app
-        self.config = config
+        self.app_config = app_config
         self.hardware = hardware
         self.logger = logger
+        
+        # Current settings (for saving)
+        self.current_volume = 0.7
+        self.current_brightness = 0.8
         
         self._authenticated = False
         self._build_ui()
         
     def _build_ui(self):
-        """Build the debug UI."""
+        """Build the debug UI with scrollable sections."""
         # Main layout
-        layout = BoxLayout(orientation='vertical', padding="10dp", spacing="10dp")
+        main_layout = BoxLayout(orientation='vertical', padding="10dp", spacing="10dp")
         
         # Header with back button
         header = BoxLayout(size_hint=(1, None), height="60dp", spacing="10dp")
         
-        back_btn = MDIconButton(
-            icon="arrow-left",
+        back_btn = MDRaisedButton(
+            text="< Back",
+            size_hint=(None, None),
+            size=("100dp", "50dp"),
             on_release=lambda x: self.app.switch_to_customer()
         )
         header.add_widget(back_btn)
@@ -120,256 +423,398 @@ class DebugScreen(Screen):
         title = MDLabel(
             text="Debug & Setup",
             font_style='H5',
-            size_hint=(1, None),
-            height="60dp"
+            valign='center'
         )
         header.add_widget(title)
         
-        layout.add_widget(header)
+        # Save button
+        save_btn = MDRaisedButton(
+            text="Save",
+            size_hint=(None, None),
+            size=("100dp", "50dp"),
+            md_bg_color=(0.2, 0.6, 0.2, 1),  # Green
+            on_release=lambda x: asyncio.create_task(self._save_config())
+        )
+        header.add_widget(save_btn)
+        
+        main_layout.add_widget(header)
         
         # Scrollable content
-        scroll = ScrollView()
-        content = MDList()
+        scroll = ScrollView(size_hint=(1, 1))
         
-        # Hardware Control Section
-        content.add_widget(self._create_section_header("Hardware Control"))
+        content = BoxLayout(
+            orientation='vertical',
+            spacing="15dp",
+            size_hint_y=None,
+            padding=("5dp", "10dp")
+        )
+        content.bind(minimum_height=content.setter('height'))
         
-        # Relay controls
-        relay_panel = self._create_relay_panel()
-        content.add_widget(relay_panel)
+        # Audio Section
+        audio_section = self._create_audio_section()
+        content.add_widget(audio_section)
         
-        # LED controls
-        led_panel = self._create_led_panel()
-        content.add_widget(led_panel)
+        # LED Section
+        led_section = self._create_led_section()
+        content.add_widget(led_section)
         
-        # Audio controls
-        audio_panel = self._create_audio_panel()
-        content.add_widget(audio_panel)
+        # LED Zone Mapping Section
+        zone_section = self._create_zone_section()
+        content.add_widget(zone_section)
         
-        # Sensor status
-        sensor_panel = self._create_sensor_panel()
-        content.add_widget(sensor_panel)
+        # Relay Section
+        relay_section = self._create_relay_section()
+        content.add_widget(relay_section)
         
-        # System Info Section
-        content.add_widget(self._create_section_header("System Information"))
+        # Sensor Section
+        sensor_section = self._create_sensor_section()
+        content.add_widget(sensor_section)
         
-        # Statistics
-        stats_panel = self._create_stats_panel()
-        content.add_widget(stats_panel)
+        # Statistics Section
+        stats_section = self._create_stats_section()
+        content.add_widget(stats_section)
         
-        # Logs
-        logs_panel = self._create_logs_panel()
-        content.add_widget(logs_panel)
+        # Logs Section
+        logs_section = self._create_logs_section()
+        content.add_widget(logs_section)
         
         scroll.add_widget(content)
-        layout.add_widget(scroll)
+        main_layout.add_widget(scroll)
         
-        self.add_widget(layout)
+        self.add_widget(main_layout)
         
-    def _create_section_header(self, text: str):
-        """Create a section header."""
-        return MDLabel(
-            text=text,
-            font_style='H6',
-            size_hint=(1, None),
-            height="40dp",
-            padding=("10dp", "10dp")
+    def _create_audio_section(self):
+        """Create audio control section."""
+        section = SectionCard(title="Audio Control")
+        
+        # Volume slider
+        self.volume_slider = LargeSlider(
+            label_text="Volume",
+            min_val=0,
+            max_val=1,
+            default_val=self.current_volume,
+            on_change=self._on_volume_change
         )
+        section.add_content(self.volume_slider)
         
-    def _create_relay_panel(self):
-        """Create relay control panel."""
-        # Content
-        content = BoxLayout(orientation='vertical', spacing="10dp", padding="10dp")
+        # Sound test buttons
+        sounds_row = BoxLayout(size_hint=(1, None), height="50dp", spacing="10dp")
         
-        # Test all relays button
-        test_btn = MDRaisedButton(
+        for sound_name, display_name in [
+            ("valid_purchase", "Success"),
+            ("invalid_purchase", "Error"),
+            ("door_alarm", "Alarm")
+        ]:
+            btn = MDRaisedButton(
+                text=display_name,
+                size_hint=(1, 1),
+                on_release=lambda x, s=sound_name: asyncio.create_task(
+                    self._play_sound(s)
+                )
+            )
+            sounds_row.add_widget(btn)
+            
+        section.add_content(sounds_row)
+        
+        return section
+        
+    def _create_led_section(self):
+        """Create LED control section."""
+        section = SectionCard(title="LED Control")
+        
+        # Brightness slider
+        self.brightness_slider = LargeSlider(
+            label_text="Brightness",
+            min_val=0,
+            max_val=1,
+            default_val=self.current_brightness,
+            on_change=self._on_brightness_change
+        )
+        section.add_content(self.brightness_slider)
+        
+        # Color buttons row 1
+        colors_row1 = BoxLayout(size_hint=(1, None), height="50dp", spacing="10dp")
+        
+        for color_name, rgb in [("Red", (255, 0, 0)), ("Green", (0, 255, 0)), ("Blue", (0, 0, 255))]:
+            btn = MDRaisedButton(
+                text=color_name,
+                size_hint=(1, 1),
+                md_bg_color=(rgb[0]/255, rgb[1]/255, rgb[2]/255, 1),
+                on_release=lambda x, c=rgb: asyncio.create_task(
+                    self._set_led_color(c[0], c[1], c[2])
+                )
+            )
+            colors_row1.add_widget(btn)
+            
+        section.add_content(colors_row1)
+        
+        # Color buttons row 2
+        colors_row2 = BoxLayout(size_hint=(1, None), height="50dp", spacing="10dp")
+        
+        for color_name, rgb in [("White", (255, 255, 255)), ("Yellow", (255, 255, 0)), ("Off", (0, 0, 0))]:
+            text_color = (0, 0, 0, 1) if color_name in ["White", "Yellow"] else (1, 1, 1, 1)
+            btn = MDRaisedButton(
+                text=color_name,
+                size_hint=(1, 1),
+                md_bg_color=(max(0.1, rgb[0]/255), max(0.1, rgb[1]/255), max(0.1, rgb[2]/255), 1),
+                text_color=text_color,
+                on_release=lambda x, c=rgb: asyncio.create_task(
+                    self._set_led_color(c[0], c[1], c[2])
+                )
+            )
+            colors_row2.add_widget(btn)
+            
+        section.add_content(colors_row2)
+        
+        # Animation buttons
+        anim_row = BoxLayout(size_hint=(1, None), height="50dp", spacing="10dp")
+        
+        for anim in ["idle", "valid_purchase", "door_alarm"]:
+            display = anim.replace("_", " ").title()
+            btn = MDRaisedButton(
+                text=display,
+                size_hint=(1, 1),
+                on_release=lambda x, a=anim: asyncio.create_task(
+                    self._play_animation(a)
+                )
+            )
+            anim_row.add_widget(btn)
+            
+        section.add_content(anim_row)
+        
+        return section
+        
+    def _create_zone_section(self):
+        """Create LED zone mapping section."""
+        section = SectionCard(title="LED Zone Mapping (Pixel ranges per level)")
+        
+        # Total pixels info
+        total_pixels = self.app_config.hardware.wled.pixel_count
+        info_label = MDLabel(
+            text=f"Total pixels: {total_pixels}",
+            size_hint=(1, None),
+            height="30dp",
+            font_style='Caption'
+        )
+        section.add_content(info_label)
+        
+        # Zone configuration storage
+        self.zone_inputs = {}
+        
+        # Get current zones from config
+        try:
+            current_zones = self.app_config.led.zones
+        except:
+            # Default zones if not configured
+            current_zones = [[i * 30, (i + 1) * 30 - 1] for i in range(10)]
+        
+        # Create inputs for each level (5 levels per row to save space)
+        for level in range(1, self.app_config.vending.levels + 1):
+            zone_row = BoxLayout(size_hint=(1, None), height="45dp", spacing="8dp")
+            
+            # Level label
+            level_label = MDLabel(
+                text=f"L{level}:",
+                size_hint=(None, 1),
+                width="40dp",
+                font_style='Body2'
+            )
+            zone_row.add_widget(level_label)
+            
+            # Start pixel input
+            start_val = current_zones[level - 1][0] if level <= len(current_zones) else (level - 1) * 30
+            start_input = MDTextField(
+                text=str(start_val),
+                hint_text="Start",
+                mode="rectangle",
+                size_hint=(0.25, 1),
+                input_filter="int"
+            )
+            zone_row.add_widget(start_input)
+            
+            # Separator
+            sep_label = MDLabel(
+                text="-",
+                halign='center',
+                size_hint=(None, 1),
+                width="20dp"
+            )
+            zone_row.add_widget(sep_label)
+            
+            # End pixel input
+            end_val = current_zones[level - 1][1] if level <= len(current_zones) else level * 30 - 1
+            end_input = MDTextField(
+                text=str(end_val),
+                hint_text="End",
+                mode="rectangle",
+                size_hint=(0.25, 1),
+                input_filter="int"
+            )
+            zone_row.add_widget(end_input)
+            
+            # Test button - lights up this zone
+            test_btn = MDRaisedButton(
+                text="Test",
+                size_hint=(None, 1),
+                width="70dp",
+                on_release=lambda x, lv=level: asyncio.create_task(self._test_zone(lv))
+            )
+            zone_row.add_widget(test_btn)
+            
+            # Store references
+            self.zone_inputs[level] = {
+                'start': start_input,
+                'end': end_input
+            }
+            
+            section.add_content(zone_row)
+        
+        # Buttons row
+        buttons_row = BoxLayout(size_hint=(1, None), height="50dp", spacing="10dp")
+        
+        # Test all zones button
+        test_all_btn = MDRaisedButton(
+            text="Test All Zones",
+            size_hint=(1, 1),
+            on_release=lambda x: asyncio.create_task(self._test_all_zones())
+        )
+        buttons_row.add_widget(test_all_btn)
+        
+        # Save zones button
+        save_zones_btn = MDRaisedButton(
+            text="Save Zones",
+            size_hint=(1, 1),
+            md_bg_color=(0.2, 0.6, 0.2, 1),  # Green
+            on_release=lambda x: asyncio.create_task(self._save_zones())
+        )
+        buttons_row.add_widget(save_zones_btn)
+        
+        section.add_content(buttons_row)
+        
+        return section
+    
+    def _create_relay_section(self):
+        """Create relay control section."""
+        section = SectionCard(title="Relay Control")
+        
+        # Test all button
+        test_all_btn = MDRaisedButton(
             text="Test All Relays (Cascade)",
+            size_hint=(1, None),
+            height="50dp",
             on_release=lambda x: asyncio.create_task(self._test_all_relays())
         )
-        content.add_widget(test_btn)
+        section.add_content(test_all_btn)
         
-        # Individual relay grid
-        grid = GridLayout(cols=4, spacing="5dp")
+        # Relay grid (4 columns, 8 rows)
+        relay_grid = GridLayout(
+            cols=4,
+            spacing="8dp",
+            size_hint=(1, None),
+            height="360dp"
+        )
+        
         for i in range(1, 33):
             btn = MDRaisedButton(
                 text=f"R{i}",
-                size_hint=(None, None),
-                size=("60dp", "60dp"),
+                size_hint=(1, None),
+                height="40dp",
+                font_size="14sp",
                 on_release=lambda x, ch=i: asyncio.create_task(self._toggle_relay(ch))
             )
-            grid.add_widget(btn)
+            relay_grid.add_widget(btn)
             
-        content.add_widget(grid)
+        section.add_content(relay_grid)
         
-        # Create expansion panel
-        panel = MDExpansionPanel(
-            icon="",
-            content=content,
-            panel_cls=MDExpansionPanelOneLine(text="Relay Controller")
-        )
+        return section
         
-        return panel
-        
-    def _create_led_panel(self):
-        """Create LED control panel."""
-        content = BoxLayout(orientation='vertical', spacing="10dp", padding="10dp")
-        
-        # Color buttons
-        colors = [
-            ("Red", (255, 0, 0)),
-            ("Green", (0, 255, 0)),
-            ("Blue", (0, 0, 255)),
-            ("White", (255, 255, 255)),
-            ("Off", (0, 0, 0))
-        ]
-        
-        for name, color in colors:
-            btn = MDRaisedButton(
-                text=name,
-                on_release=lambda x, c=color: asyncio.create_task(
-                    self.hardware.led.set_color(c[0], c[1], c[2], 0.8)
-                )
-            )
-            content.add_widget(btn)
-            
-        # Brightness slider
-        brightness_label = MDLabel(text="Brightness", size_hint=(1, None), height="30dp")
-        content.add_widget(brightness_label)
-        
-        brightness_slider = MDSlider(
-            min=0,
-            max=1,
-            value=0.8,
-            on_release=lambda x: asyncio.create_task(
-                self.hardware.led.set_brightness(x.value)
-            )
-        )
-        content.add_widget(brightness_slider)
-        
-        # Animation buttons
-        animations = ["idle", "sleep", "valid_purchase", "invalid_purchase", "door_alarm"]
-        for anim in animations:
-            btn = MDRaisedButton(
-                text=f"Play: {anim}",
-                on_release=lambda x, a=anim: asyncio.create_task(
-                    self.hardware.led.play_animation(a)
-                )
-            )
-            content.add_widget(btn)
-            
-        panel = MDExpansionPanel(
-            icon="",
-            content=content,
-            panel_cls=MDExpansionPanelOneLine(text="LED Controller")
-        )
-        
-        return panel
-        
-    def _create_audio_panel(self):
-        """Create audio control panel."""
-        content = BoxLayout(orientation='vertical', spacing="10dp", padding="10dp")
-        
-        # Volume slider
-        volume_label = MDLabel(text="Volume", size_hint=(1, None), height="30dp")
-        content.add_widget(volume_label)
-        
-        volume_slider = MDSlider(
-            min=0,
-            max=1,
-            value=0.7,
-            on_release=lambda x: asyncio.create_task(
-                self.hardware.audio.set_volume(x.value)
-            )
-        )
-        content.add_widget(volume_slider)
-        
-        # Sound test buttons
-        sounds = ["valid_purchase", "invalid_purchase", "door_alarm"]
-        for sound in sounds:
-            btn = MDRaisedButton(
-                text=f"Play: {sound}",
-                on_release=lambda x, s=sound: asyncio.create_task(
-                    self.hardware.audio.play_sound(s)
-                )
-            )
-            content.add_widget(btn)
-            
-        panel = MDExpansionPanel(
-            icon="",
-            content=content,
-            panel_cls=MDExpansionPanelOneLine(text="Audio Controller")
-        )
-        
-        return panel
-        
-    def _create_sensor_panel(self):
-        """Create sensor status panel."""
-        content = BoxLayout(orientation='vertical', spacing="10dp", padding="10dp")
+    def _create_sensor_section(self):
+        """Create sensor status section."""
+        section = SectionCard(title="Sensors")
         
         self.door_status_label = MDLabel(
             text="Door: Checking...",
             size_hint=(1, None),
-            height="40dp"
+            height="40dp",
+            font_style='Body1'
         )
-        content.add_widget(self.door_status_label)
+        section.add_content(self.door_status_label)
         
-        # Update door status
+        # Start door status updates
         asyncio.create_task(self._update_door_status())
         
-        panel = MDExpansionPanel(
-            icon="",
-            content=content,
-            panel_cls=MDExpansionPanelOneLine(text="Sensors")
-        )
+        return section
         
-        return panel
-        
-    def _create_stats_panel(self):
-        """Create statistics panel."""
-        content = BoxLayout(orientation='vertical', spacing="10dp", padding="10dp")
+    def _create_stats_section(self):
+        """Create statistics section."""
+        section = SectionCard(title="Statistics")
         
         self.stats_label = MDLabel(
             text="Loading statistics...",
             size_hint=(1, None),
-            height="120dp"
+            height="100dp",
+            font_style='Body1'
         )
-        content.add_widget(self.stats_label)
+        section.add_content(self.stats_label)
         
         # Update statistics
         asyncio.create_task(self._update_statistics())
         
-        panel = MDExpansionPanel(
-            icon="",
-            content=content,
-            panel_cls=MDExpansionPanelOneLine(text="Statistics")
-        )
+        return section
         
-        return panel
+    def _create_logs_section(self):
+        """Create logs section."""
+        section = SectionCard(title="Logs")
         
-    def _create_logs_panel(self):
-        """Create logs panel."""
-        content = BoxLayout(orientation='vertical', spacing="10dp", padding="10dp")
+        buttons_row = BoxLayout(size_hint=(1, None), height="50dp", spacing="10dp")
         
         view_logs_btn = MDRaisedButton(
             text="View Recent Logs",
+            size_hint=(1, 1),
             on_release=lambda x: asyncio.create_task(self._show_logs())
         )
-        content.add_widget(view_logs_btn)
+        buttons_row.add_widget(view_logs_btn)
         
         export_logs_btn = MDRaisedButton(
-            text="Export Logs to JSON",
+            text="Export Logs",
+            size_hint=(1, 1),
             on_release=lambda x: asyncio.create_task(self._export_logs())
         )
-        content.add_widget(export_logs_btn)
+        buttons_row.add_widget(export_logs_btn)
         
-        panel = MDExpansionPanel(
-            icon="",
-            content=content,
-            panel_cls=MDExpansionPanelOneLine(text="Logs")
-        )
+        section.add_content(buttons_row)
         
-        return panel
+        return section
         
+    # ===== Callback Methods =====
+    
+    def _on_volume_change(self, value):
+        """Handle volume slider change."""
+        self.current_volume = value
+        if self.hardware.audio:
+            asyncio.create_task(self.hardware.audio.set_volume(value))
+            
+    def _on_brightness_change(self, value):
+        """Handle brightness slider change."""
+        self.current_brightness = value
+        if self.hardware.led:
+            asyncio.create_task(self.hardware.led.set_brightness(value))
+            
+    async def _play_sound(self, sound_name: str):
+        """Play a sound."""
+        if self.hardware.audio:
+            await self.hardware.audio.play_sound(sound_name)
+            
+    async def _set_led_color(self, r: int, g: int, b: int):
+        """Set LED color."""
+        if self.hardware.led:
+            await self.hardware.led.set_color(r, g, b, self.current_brightness)
+            
+    async def _play_animation(self, animation: str):
+        """Play LED animation."""
+        if self.hardware.led:
+            await self.hardware.led.play_animation(animation)
+            
     async def _test_all_relays(self):
         """Test all relays in sequence."""
         if not self.hardware.relay:
@@ -399,11 +844,16 @@ class DebugScreen(Screen):
             return
             
         while True:
-            state = await self.hardware.sensor.get_door_state()
-            if state is not None:
-                self.door_status_label.text = f"Door: {'OPEN' if state else 'CLOSED'}"
-            else:
-                self.door_status_label.text = "Door: Error reading sensor"
+            try:
+                state = await self.hardware.sensor.get_door_state()
+                if state is not None:
+                    status = "OPEN" if state else "CLOSED"
+                    color = "(1, 0.5, 0, 1)" if state else "(0, 1, 0, 1)"
+                    self.door_status_label.text = f"Door: {status}"
+                else:
+                    self.door_status_label.text = "Door: Error reading sensor"
+            except Exception as e:
+                self.door_status_label.text = f"Door: Error - {e}"
                 
             await asyncio.sleep(1.0)
             
@@ -434,9 +884,12 @@ Server Incidents: {stats['server_incidents']}"""
             for log in logs
         ])
         
+        if not log_text:
+            log_text = "No logs available"
+        
         dialog = MDDialog(
             title="Recent Logs",
-            text=log_text,
+            text=log_text[:2000],  # Limit text length
             buttons=[
                 MDFlatButton(
                     text="CLOSE",
@@ -471,19 +924,185 @@ Server Incidents: {stats['server_incidents']}"""
         )
         dialog.open()
         
+    async def _test_zone(self, level: int):
+        """Test a specific zone by lighting it up."""
+        if not self.hardware.led:
+            return
+            
+        # Get zone range from inputs
+        try:
+            start = int(self.zone_inputs[level]['start'].text)
+            end = int(self.zone_inputs[level]['end'].text)
+        except (ValueError, KeyError):
+            self.logger.warning(f"Invalid zone values for level {level}")
+            return
+            
+        self.logger.info(f"Testing zone {level}: pixels {start}-{end}")
+        
+        # Turn off all LEDs first
+        await self.hardware.led.turn_off()
+        await asyncio.sleep(0.1)
+        
+        # Light up just this zone in green
+        await self.hardware.led.set_zone_pixels(start, end, 0, 255, 0, self.current_brightness)
+        
+        # Turn off after 2 seconds
+        await asyncio.sleep(2.0)
+        await self.hardware.led.turn_off()
+        
+    async def _test_all_zones(self):
+        """Test all zones sequentially."""
+        if not self.hardware.led:
+            return
+            
+        self.logger.info("Testing all zones")
+        
+        colors = [
+            (255, 0, 0),    # Red
+            (0, 255, 0),    # Green
+            (0, 0, 255),    # Blue
+            (255, 255, 0),  # Yellow
+            (255, 0, 255),  # Magenta
+            (0, 255, 255),  # Cyan
+            (255, 128, 0),  # Orange
+            (128, 0, 255),  # Purple
+            (0, 255, 128),  # Spring
+            (255, 255, 255) # White
+        ]
+        
+        for level in range(1, self.app_config.vending.levels + 1):
+            try:
+                start = int(self.zone_inputs[level]['start'].text)
+                end = int(self.zone_inputs[level]['end'].text)
+            except (ValueError, KeyError):
+                continue
+                
+            # Turn off all first
+            await self.hardware.led.turn_off()
+            await asyncio.sleep(0.05)
+            
+            # Light up this zone with a unique color
+            color = colors[(level - 1) % len(colors)]
+            await self.hardware.led.set_zone_pixels(start, end, color[0], color[1], color[2], self.current_brightness)
+            await asyncio.sleep(0.5)
+            
+        # Turn off after test
+        await asyncio.sleep(1.0)
+        await self.hardware.led.turn_off()
+        self.logger.info("Zone test complete")
+        
+    async def _save_zones(self):
+        """Save zone configuration to local config."""
+        local_config_path = Path("config/local.yaml")
+        
+        # Load existing local config or create new
+        if local_config_path.exists():
+            with open(local_config_path, 'r') as f:
+                local_config = yaml.safe_load(f) or {}
+        else:
+            local_config = {}
+            
+        # Build zones list
+        zones = []
+        for level in range(1, self.app_config.vending.levels + 1):
+            try:
+                start = int(self.zone_inputs[level]['start'].text)
+                end = int(self.zone_inputs[level]['end'].text)
+                zones.append([start, end])
+            except (ValueError, KeyError) as e:
+                self.logger.error(f"Invalid zone for level {level}: {e}")
+                # Show error dialog
+                dialog = MDDialog(
+                    title="Error",
+                    text=f"Invalid values for Level {level}. Please enter valid numbers.",
+                    buttons=[MDFlatButton(text="OK", on_release=lambda x: dialog.dismiss())]
+                )
+                dialog.open()
+                return
+                
+        # Update config
+        if 'led' not in local_config:
+            local_config['led'] = {}
+        local_config['led']['zones'] = zones
+        
+        # Save config
+        with open(local_config_path, 'w') as f:
+            yaml.dump(local_config, f, default_flow_style=False)
+            
+        self.logger.info(f"Zone configuration saved to {local_config_path}")
+        
+        # Show confirmation
+        zones_text = "\n".join([f"L{i+1}: {z[0]}-{z[1]}" for i, z in enumerate(zones)])
+        dialog = MDDialog(
+            title="Zones Saved",
+            text=f"Zone configuration saved:\n{zones_text}",
+            buttons=[MDFlatButton(text="OK", on_release=lambda x: dialog.dismiss())]
+        )
+        dialog.open()
+        
+    async def _save_config(self):
+        """Save current settings to local config file."""
+        local_config_path = Path("config/local.yaml")
+        
+        # Load existing local config or create new
+        if local_config_path.exists():
+            with open(local_config_path, 'r') as f:
+                local_config = yaml.safe_load(f) or {}
+        else:
+            local_config = {}
+            
+        # Update audio settings
+        if 'audio' not in local_config:
+            local_config['audio'] = {}
+        local_config['audio']['default_volume'] = round(self.current_volume, 2)
+        
+        # Update LED settings
+        if 'hardware' not in local_config:
+            local_config['hardware'] = {}
+        if 'wled' not in local_config['hardware']:
+            local_config['hardware']['wled'] = {}
+        local_config['hardware']['wled']['default_brightness'] = round(self.current_brightness, 2)
+        
+        # Save config
+        with open(local_config_path, 'w') as f:
+            yaml.dump(local_config, f, default_flow_style=False)
+            
+        self.logger.info(f"Configuration saved to {local_config_path}")
+        
+        # Show confirmation
+        dialog = MDDialog(
+            title="Settings Saved",
+            text=f"Volume: {int(self.current_volume * 100)}%\nBrightness: {int(self.current_brightness * 100)}%",
+            buttons=[
+                MDFlatButton(
+                    text="OK",
+                    on_release=lambda x: dialog.dismiss()
+                )
+            ]
+        )
+        dialog.open()
+        
     def on_enter(self):
         """Called when screen is entered."""
-        # Check PIN if not authenticated
-        if not self._authenticated:
-            self._show_pin_dialog()
+        # Always require PIN when entering debug screen
+        self._authenticated = False
+        self._show_pin_dialog()
             
     def _show_pin_dialog(self):
         """Show PIN entry dialog."""
-        dialog = PINDialog(on_success=self._on_authenticated)
-        dialog.expected_pin = self.config.telemetry.debug_pin
+        dialog = PINDialog(
+            on_success=self._on_authenticated,
+            on_cancel=self._on_pin_cancelled
+        )
+        dialog.expected_pin = self.app_config.telemetry.debug_pin
         dialog.open()
         
     def _on_authenticated(self):
         """Called when successfully authenticated."""
         self._authenticated = True
         self.logger.info("Debug screen authenticated")
+        
+    def _on_pin_cancelled(self):
+        """Called when PIN entry is cancelled - return to customer screen."""
+        self.logger.info("PIN entry cancelled, returning to main screen")
+        self.app.switch_to_customer()
