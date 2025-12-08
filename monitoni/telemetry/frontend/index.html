@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MoniToni Telemetry Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --bg-primary: #0f0f1a;
+            --bg-secondary: #1a1a2e;
+            --bg-card: #16213e;
+            --bg-card-hover: #1f3460;
+            --accent-primary: #00d4ff;
+            --accent-secondary: #7b2cbf;
+            --accent-success: #00f593;
+            --accent-warning: #ffa726;
+            --accent-danger: #ff4757;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --border-color: #2a2a4a;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-card) 100%);
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-card);
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent-danger);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: var(--accent-success);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Main Layout */
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            padding: 1.5rem;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 1200px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.25rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-title i {
+            color: var(--accent-primary);
+        }
+
+        /* Status Grid */
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .status-item {
+            background: var(--bg-secondary);
+            padding: 1rem;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .status-item .label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .status-item .value {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .status-item .value.success { color: var(--accent-success); }
+        .status-item .value.warning { color: var(--accent-warning); }
+        .status-item .value.danger { color: var(--accent-danger); }
+
+        /* Hardware Status */
+        .hardware-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .hardware-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+        }
+
+        .hardware-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+        }
+
+        .hardware-icon.connected {
+            background: rgba(0, 245, 147, 0.15);
+            color: var(--accent-success);
+        }
+
+        .hardware-icon.error {
+            background: rgba(255, 71, 87, 0.15);
+            color: var(--accent-danger);
+        }
+
+        .hardware-info h4 {
+            font-size: 0.95rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .hardware-info span {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        /* Relay Grid */
+        .relay-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 0.5rem;
+        }
+
+        .relay-btn {
+            aspect-ratio: 1;
+            border: none;
+            border-radius: 8px;
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .relay-btn:hover {
+            background: var(--bg-card-hover);
+            color: var(--text-primary);
+        }
+
+        .relay-btn.active {
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+
+        .relay-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Logs */
+        .logs-container {
+            max-height: 400px;
+            overflow-y: auto;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1rem;
+        }
+
+        .log-entry {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-entry .timestamp {
+            color: var(--text-secondary);
+            margin-right: 0.5rem;
+        }
+
+        .log-entry .level {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-right: 0.5rem;
+        }
+
+        .log-entry .level.INFO { background: rgba(0, 212, 255, 0.2); color: var(--accent-primary); }
+        .log-entry .level.WARNING { background: rgba(255, 167, 38, 0.2); color: var(--accent-warning); }
+        .log-entry .level.ERROR { background: rgba(255, 71, 87, 0.2); color: var(--accent-danger); }
+        .log-entry .level.DEBUG { background: rgba(160, 160, 176, 0.2); color: var(--text-secondary); }
+
+        /* Controls */
+        .control-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .control-section h4 {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+
+        .btn-primary:hover {
+            background: #00b8d9;
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .btn-danger {
+            background: var(--accent-danger);
+            color: white;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        /* PIN Input */
+        .pin-container {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .pin-input {
+            padding: 0.75rem 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 1rem;
+            width: 120px;
+            text-align: center;
+            letter-spacing: 0.25rem;
+        }
+
+        .pin-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+
+        .pin-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* Color Picker */
+        .color-picker-container {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .color-input {
+            width: 60px;
+            height: 40px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 1000;
+        }
+
+        .toast {
+            padding: 1rem 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            animation: slideIn 0.3s ease;
+            box-shadow: var(--shadow);
+        }
+
+        .toast.success { border-left: 4px solid var(--accent-success); }
+        .toast.error { border-left: 4px solid var(--accent-danger); }
+        .toast.info { border-left: 4px solid var(--accent-primary); }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+
+        /* Full Width Card */
+        .full-width {
+            grid-column: 1 / -1;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>
+            <i class="fas fa-vending-machine"></i>
+            MoniToni Telemetry
+        </h1>
+        <div class="connection-status">
+            <div class="status-dot" id="connectionDot"></div>
+            <span id="connectionText">Connecting...</span>
+        </div>
+    </header>
+
+    <main class="main-container">
+        <!-- Status Card -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-chart-line"></i> Machine Status</h3>
+                <span id="machineId">VM001</span>
+            </div>
+            <div class="status-grid">
+                <div class="status-item">
+                    <div class="label">State</div>
+                    <div class="value success" id="machineState">IDLE</div>
+                </div>
+                <div class="status-item">
+                    <div class="label">Completed</div>
+                    <div class="value" id="completedPurchases">0</div>
+                </div>
+                <div class="status-item">
+                    <div class="label">Failed</div>
+                    <div class="value danger" id="failedPurchases">0</div>
+                </div>
+                <div class="status-item">
+                    <div class="label">Uptime</div>
+                    <div class="value" id="uptime">--</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hardware Status Card -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-microchip"></i> Hardware</h3>
+                <button class="btn btn-secondary" onclick="refreshStatus()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+            <div class="hardware-grid">
+                <div class="hardware-item">
+                    <div class="hardware-icon connected" id="relayIcon">
+                        <i class="fas fa-toggle-on"></i>
+                    </div>
+                    <div class="hardware-info">
+                        <h4>Relay Controller</h4>
+                        <span id="relayStatus">Connected</span>
+                    </div>
+                </div>
+                <div class="hardware-item">
+                    <div class="hardware-icon connected" id="ledIcon">
+                        <i class="fas fa-lightbulb"></i>
+                    </div>
+                    <div class="hardware-info">
+                        <h4>LED Controller</h4>
+                        <span id="ledStatus">Connected</span>
+                    </div>
+                </div>
+                <div class="hardware-item">
+                    <div class="hardware-icon connected" id="sensorIcon">
+                        <i class="fas fa-door-open"></i>
+                    </div>
+                    <div class="hardware-info">
+                        <h4>Door Sensor</h4>
+                        <span id="sensorStatus">Connected</span>
+                    </div>
+                </div>
+                <div class="hardware-item">
+                    <div class="hardware-icon connected" id="audioIcon">
+                        <i class="fas fa-volume-up"></i>
+                    </div>
+                    <div class="hardware-info">
+                        <h4>Audio</h4>
+                        <span id="audioStatus">Connected</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Relay Control Card -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-th"></i> Relay Control</h3>
+                <button class="btn btn-primary" onclick="testAllRelays()">
+                    <i class="fas fa-play"></i> Test All
+                </button>
+            </div>
+            <div class="pin-container">
+                <span class="pin-label">PIN:</span>
+                <input type="password" class="pin-input" id="pinInput" maxlength="4" placeholder="****">
+            </div>
+            <div class="relay-grid" id="relayGrid">
+                <!-- Relay buttons generated by JS -->
+            </div>
+        </div>
+
+        <!-- LED Control Card -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-palette"></i> LED Control</h3>
+            </div>
+            <div class="control-section">
+                <h4>Solid Color</h4>
+                <div class="color-picker-container">
+                    <input type="color" class="color-input" id="colorPicker" value="#00d4ff">
+                    <button class="btn btn-primary" onclick="setLEDColor()">
+                        <i class="fas fa-check"></i> Apply
+                    </button>
+                    <button class="btn btn-secondary" onclick="turnOffLEDs()">
+                        <i class="fas fa-power-off"></i> Off
+                    </button>
+                </div>
+            </div>
+            <div class="control-section">
+                <h4>Animations</h4>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="playAnimation('rainbow_chase')">
+                        <i class="fas fa-rainbow"></i> Rainbow
+                    </button>
+                    <button class="btn btn-secondary" onclick="playAnimation('breathing')">
+                        <i class="fas fa-wind"></i> Breathing
+                    </button>
+                    <button class="btn btn-secondary" onclick="playAnimation('flash')">
+                        <i class="fas fa-bolt"></i> Flash
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Card -->
+        <div class="card full-width">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-list-alt"></i> System Logs</h3>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="refreshLogs()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <button class="btn btn-secondary" onclick="exportLogs()">
+                        <i class="fas fa-download"></i> Export
+                    </button>
+                </div>
+            </div>
+            <div class="logs-container" id="logsContainer">
+                <div class="log-entry">
+                    <span class="timestamp">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        let ws = null;
+        let relayStates = {};
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            generateRelayButtons();
+            connectWebSocket();
+            refreshStatus();
+            refreshLogs();
+        });
+
+        // Generate relay buttons
+        function generateRelayButtons() {
+            const grid = document.getElementById('relayGrid');
+            grid.innerHTML = '';
+            for (let i = 1; i <= 32; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'relay-btn';
+                btn.id = `relay-${i}`;
+                btn.textContent = i;
+                btn.onclick = () => toggleRelay(i);
+                grid.appendChild(btn);
+                relayStates[i] = false;
+            }
+        }
+
+        // WebSocket connection
+        function connectWebSocket() {
+            const wsUrl = `ws://${window.location.host}/ws`;
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                document.getElementById('connectionDot').classList.add('connected');
+                document.getElementById('connectionText').textContent = 'Connected';
+                showToast('Connected to telemetry server', 'success');
+            };
+
+            ws.onclose = () => {
+                document.getElementById('connectionDot').classList.remove('connected');
+                document.getElementById('connectionText').textContent = 'Disconnected';
+                setTimeout(connectWebSocket, 5000);
+            };
+
+            ws.onerror = () => {
+                showToast('WebSocket error', 'error');
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+            };
+        }
+
+        function handleWebSocketMessage(data) {
+            switch (data.type) {
+                case 'status':
+                    updateStatus(data.data);
+                    break;
+                case 'state_change':
+                    document.getElementById('machineState').textContent = data.state;
+                    break;
+                case 'relay_change':
+                    updateRelayButton(data.channel, data.state);
+                    break;
+                case 'heartbeat':
+                    // Keep alive
+                    break;
+            }
+        }
+
+        // API calls
+        async function refreshStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/status`);
+                const data = await response.json();
+                updateStatus(data);
+            } catch (error) {
+                showToast('Failed to fetch status', 'error');
+            }
+        }
+
+        function updateStatus(data) {
+            document.getElementById('machineId').textContent = data.machine_id || 'Unknown';
+            document.getElementById('machineState').textContent = data.state || 'UNKNOWN';
+            
+            if (data.statistics) {
+                document.getElementById('completedPurchases').textContent = data.statistics.completed_purchases || 0;
+                document.getElementById('failedPurchases').textContent = data.statistics.failed_purchases || 0;
+            }
+
+            if (data.hardware && data.hardware.components) {
+                updateHardwareStatus('relay', data.hardware.components.relay);
+                updateHardwareStatus('led', data.hardware.components.led);
+                updateHardwareStatus('sensor', data.hardware.components.sensor);
+                updateHardwareStatus('audio', data.hardware.components.audio);
+            }
+        }
+
+        function updateHardwareStatus(component, status) {
+            const icon = document.getElementById(`${component}Icon`);
+            const statusEl = document.getElementById(`${component}Status`);
+            
+            if (status && status.status === 'connected') {
+                icon.classList.remove('error');
+                icon.classList.add('connected');
+                statusEl.textContent = 'Connected';
+            } else {
+                icon.classList.remove('connected');
+                icon.classList.add('error');
+                statusEl.textContent = status?.status || 'Disconnected';
+            }
+        }
+
+        async function refreshLogs() {
+            try {
+                const response = await fetch(`${API_BASE}/api/logs?per_page=50`);
+                const data = await response.json();
+                renderLogs(data.logs);
+            } catch (error) {
+                showToast('Failed to fetch logs', 'error');
+            }
+        }
+
+        function renderLogs(logs) {
+            const container = document.getElementById('logsContainer');
+            
+            if (!logs || logs.length === 0) {
+                container.innerHTML = '<div class="log-entry"><span class="timestamp">No logs available</span></div>';
+                return;
+            }
+
+            container.innerHTML = logs.map(log => `
+                <div class="log-entry">
+                    <span class="timestamp">${formatTimestamp(log.timestamp)}</span>
+                    <span class="level ${log.level}">${log.level}</span>
+                    <span class="message">${log.message}</span>
+                </div>
+            `).join('');
+        }
+
+        function formatTimestamp(ts) {
+            if (!ts) return '';
+            const date = new Date(ts);
+            return date.toLocaleTimeString();
+        }
+
+        // Relay controls
+        async function toggleRelay(channel) {
+            const pin = document.getElementById('pinInput').value;
+            if (!pin) {
+                showToast('Please enter PIN', 'error');
+                return;
+            }
+
+            const newState = !relayStates[channel];
+
+            try {
+                const response = await fetch(`${API_BASE}/api/debug/relay`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pin, channel, state: newState })
+                });
+
+                if (response.ok) {
+                    relayStates[channel] = newState;
+                    updateRelayButton(channel, newState);
+                    showToast(`Relay ${channel} ${newState ? 'ON' : 'OFF'}`, 'success');
+                } else if (response.status === 403) {
+                    showToast('Invalid PIN', 'error');
+                } else {
+                    showToast('Failed to control relay', 'error');
+                }
+            } catch (error) {
+                showToast('Network error', 'error');
+            }
+        }
+
+        function updateRelayButton(channel, state) {
+            const btn = document.getElementById(`relay-${channel}`);
+            if (btn) {
+                btn.classList.toggle('active', state);
+                relayStates[channel] = state;
+            }
+        }
+
+        async function testAllRelays() {
+            const pin = document.getElementById('pinInput').value;
+            if (!pin) {
+                showToast('Please enter PIN', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/debug/test-relay-cascade?pin=${pin}`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    showToast('Relay cascade test started', 'info');
+                } else if (response.status === 403) {
+                    showToast('Invalid PIN', 'error');
+                } else {
+                    showToast('Test failed', 'error');
+                }
+            } catch (error) {
+                showToast('Network error', 'error');
+            }
+        }
+
+        // LED controls
+        async function setLEDColor() {
+            const pin = document.getElementById('pinInput').value;
+            if (!pin) {
+                showToast('Please enter PIN', 'error');
+                return;
+            }
+
+            const color = document.getElementById('colorPicker').value;
+            const r = parseInt(color.substr(1, 2), 16);
+            const g = parseInt(color.substr(3, 2), 16);
+            const b = parseInt(color.substr(5, 2), 16);
+
+            await sendLEDCommand({ pin, r, g, b });
+        }
+
+        async function turnOffLEDs() {
+            const pin = document.getElementById('pinInput').value;
+            if (!pin) {
+                showToast('Please enter PIN', 'error');
+                return;
+            }
+            await sendLEDCommand({ pin, r: 0, g: 0, b: 0 });
+        }
+
+        async function playAnimation(animation) {
+            const pin = document.getElementById('pinInput').value;
+            if (!pin) {
+                showToast('Please enter PIN', 'error');
+                return;
+            }
+            await sendLEDCommand({ pin, animation });
+        }
+
+        async function sendLEDCommand(params) {
+            try {
+                const response = await fetch(`${API_BASE}/api/debug/led`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(params)
+                });
+
+                if (response.ok) {
+                    showToast('LED command sent', 'success');
+                } else if (response.status === 403) {
+                    showToast('Invalid PIN', 'error');
+                } else {
+                    showToast('LED command failed', 'error');
+                }
+            } catch (error) {
+                showToast('Network error', 'error');
+            }
+        }
+
+        // Export logs
+        async function exportLogs() {
+            try {
+                const response = await fetch(`${API_BASE}/api/logs/export?format=json`);
+                const data = await response.json();
+                
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `monitoni-logs-${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                showToast('Logs exported', 'success');
+            } catch (error) {
+                showToast('Export failed', 'error');
+            }
+        }
+
+        // Toast notifications
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                <span>${message}</span>
+            `;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

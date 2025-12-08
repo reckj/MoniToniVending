@@ -149,10 +149,18 @@ class TelemetryServer:
     def _setup_routes(self):
         """Setup API routes."""
         
+        # Get frontend path
+        from pathlib import Path
+        frontend_path = Path(__file__).parent / "frontend"
+        
         @self.app.get("/", response_class=HTMLResponse)
         async def root():
-            """Serve simple status page."""
-            return """
+            """Serve dashboard frontend."""
+            index_file = frontend_path / "index.html"
+            if index_file.exists():
+                return index_file.read_text()
+            else:
+                return """
             <!DOCTYPE html>
             <html>
             <head>
