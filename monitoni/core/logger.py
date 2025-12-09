@@ -21,6 +21,7 @@ class DatabaseHandler(logging.Handler):
     Custom logging handler that writes to database.
     
     Runs database operations in async context without blocking.
+    Queues logs if event loop isn't ready yet, flushes when loop is set.
     """
     
     def __init__(self, db_manager: DatabaseManager):
@@ -33,10 +34,21 @@ class DatabaseHandler(logging.Handler):
         super().__init__()
         self.db_manager = db_manager
         self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._pending_logs = []  # Queue for logs before event loop is ready
         
     def set_event_loop(self, loop: asyncio.AbstractEventLoop) -> None:
-        """Set the event loop for async operations."""
+        """Set the event loop for async operations and flush pending logs."""
         self._loop = loop
+        # Flush pending logs
+        for log_data in self._pending_logs:
+            try:
+                asyncio.run_coroutine_threadsafe(
+                    self.db_manager.add_log(**log_data),
+                    self._loop
+                )
+            except Exception:
+                pass
+        self._pending_logs.clear()
         
     def emit(self, record: logging.LogRecord) -> None:
         """
@@ -65,18 +77,23 @@ class DatabaseHandler(logging.Handler):
                 details = record.details
             elif record.exc_info:
                 details['exception'] = self.format(record)
-                
-            # Schedule async database write
+            
+            log_data = {
+                'level': level,
+                'message': record.getMessage(),
+                'purchase_id': purchase_id,
+                'details': details if details else None
+            }
+            
+            # Queue or write immediately
             if self._loop and self._loop.is_running():
                 asyncio.run_coroutine_threadsafe(
-                    self.db_manager.add_log(
-                        level=level,
-                        message=record.getMessage(),
-                        purchase_id=purchase_id,
-                        details=details if details else None
-                    ),
+                    self.db_manager.add_log(**log_data),
                     self._loop
                 )
+            else:
+                # Queue for later
+                self._pending_logs.append(log_data)
         except Exception as e:
             # Don't let logging errors crash the application
             print(f"Error writing log to database: {e}", file=sys.stderr)
