@@ -57,6 +57,9 @@ class MotorConfig(BaseModel):
     """Motor control configuration."""
     relay_channel: int = 1
     spin_delay_ms: int = 500
+    spindle_lock_relay: int = 12
+    spindle_pre_delay_ms: int = 200
+    spindle_post_delay_ms: int = 100
 
 
 class DoorLockConfig(BaseModel):

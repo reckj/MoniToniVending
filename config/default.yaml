@@ -45,7 +45,10 @@ vending:
   # Motor control
   motor:
     relay_channel: 1  # Relay channel for motor
-    spin_delay_ms: 500  # Delay after button release
+    spin_delay_ms: 500  # Keep motor running after button release
+    spindle_lock_relay: 12  # Relay channel for spindle lock
+    spindle_pre_delay_ms: 200  # Delay after opening spindle before starting motor
+    spindle_post_delay_ms: 100  # Delay after stopping motor before closing spindle
     
   # Door lock
   door_lock:
