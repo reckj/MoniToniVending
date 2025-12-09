@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -82,8 +83,15 @@
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
         }
 
         /* Main Layout */
@@ -163,9 +171,17 @@
             font-weight: 600;
         }
 
-        .status-item .value.success { color: var(--accent-success); }
-        .status-item .value.warning { color: var(--accent-warning); }
-        .status-item .value.danger { color: var(--accent-danger); }
+        .status-item .value.success {
+            color: var(--accent-success);
+        }
+
+        .status-item .value.warning {
+            color: var(--accent-warning);
+        }
+
+        .status-item .value.danger {
+            color: var(--accent-danger);
+        }
 
         /* Hardware Status */
         .hardware-grid {
@@ -284,10 +300,25 @@
             margin-right: 0.5rem;
         }
 
-        .log-entry .level.INFO { background: rgba(0, 212, 255, 0.2); color: var(--accent-primary); }
-        .log-entry .level.WARNING { background: rgba(255, 167, 38, 0.2); color: var(--accent-warning); }
-        .log-entry .level.ERROR { background: rgba(255, 71, 87, 0.2); color: var(--accent-danger); }
-        .log-entry .level.DEBUG { background: rgba(160, 160, 176, 0.2); color: var(--text-secondary); }
+        .log-entry .level.INFO {
+            background: rgba(0, 212, 255, 0.2);
+            color: var(--accent-primary);
+        }
+
+        .log-entry .level.WARNING {
+            background: rgba(255, 167, 38, 0.2);
+            color: var(--accent-warning);
+        }
+
+        .log-entry .level.ERROR {
+            background: rgba(255, 71, 87, 0.2);
+            color: var(--accent-danger);
+        }
+
+        .log-entry .level.DEBUG {
+            background: rgba(160, 160, 176, 0.2);
+            color: var(--text-secondary);
+        }
 
         /* Controls */
         .control-section {
@@ -413,13 +444,28 @@
             box-shadow: var(--shadow);
         }
 
-        .toast.success { border-left: 4px solid var(--accent-success); }
-        .toast.error { border-left: 4px solid var(--accent-danger); }
-        .toast.info { border-left: 4px solid var(--accent-primary); }
+        .toast.success {
+            border-left: 4px solid var(--accent-success);
+        }
+
+        .toast.error {
+            border-left: 4px solid var(--accent-danger);
+        }
+
+        .toast.info {
+            border-left: 4px solid var(--accent-primary);
+        }
 
         @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
 
         /* Scrollbar */
@@ -448,6 +494,7 @@
         }
     </style>
 </head>
+
 <body>
     <header class="header">
         <h1>
@@ -637,6 +684,8 @@
         }
 
         // WebSocket connection
+        let wsFirstConnect = true;
+
         function connectWebSocket() {
             const wsUrl = `ws://${window.location.host}/ws`;
             ws = new WebSocket(wsUrl);
@@ -644,7 +693,10 @@
             ws.onopen = () => {
                 document.getElementById('connectionDot').classList.add('connected');
                 document.getElementById('connectionText').textContent = 'Connected';
-                showToast('Connected to telemetry server', 'success');
+                if (wsFirstConnect) {
+                    showToast('Connected to telemetry server', 'success');
+                    wsFirstConnect = false;
+                }
             };
 
             ws.onclose = () => {
@@ -654,7 +706,7 @@
             };
 
             ws.onerror = () => {
-                showToast('WebSocket error', 'error');
+                // Only show error if we were previously connected
             };
 
             ws.onmessage = (event) => {
@@ -675,7 +727,7 @@
                     updateRelayButton(data.channel, data.state);
                     break;
                 case 'heartbeat':
-                    // Keep alive
+                    // Keep alive - no action needed
                     break;
             }
         }
@@ -694,7 +746,7 @@
         function updateStatus(data) {
             document.getElementById('machineId').textContent = data.machine_id || 'Unknown';
             document.getElementById('machineState').textContent = data.state || 'UNKNOWN';
-            
+
             if (data.statistics) {
                 document.getElementById('completedPurchases').textContent = data.statistics.completed_purchases || 0;
                 document.getElementById('failedPurchases').textContent = data.statistics.failed_purchases || 0;
@@ -703,15 +755,17 @@
             if (data.hardware && data.hardware.components) {
                 updateHardwareStatus('relay', data.hardware.components.relay);
                 updateHardwareStatus('led', data.hardware.components.led);
-                updateHardwareStatus('sensor', data.hardware.components.sensor);
                 updateHardwareStatus('audio', data.hardware.components.audio);
+
+                // Door sensor shows open/closed state, not just connected
+                updateDoorSensorStatus(data.hardware.components.sensor, data.door_open);
             }
         }
 
         function updateHardwareStatus(component, status) {
             const icon = document.getElementById(`${component}Icon`);
             const statusEl = document.getElementById(`${component}Status`);
-            
+
             if (status && status.status === 'connected') {
                 icon.classList.remove('error');
                 icon.classList.add('connected');
@@ -720,6 +774,45 @@
                 icon.classList.remove('connected');
                 icon.classList.add('error');
                 statusEl.textContent = status?.status || 'Disconnected';
+            }
+        }
+
+        function updateDoorSensorStatus(status, doorOpen) {
+            const icon = document.getElementById('sensorIcon');
+            const statusEl = document.getElementById('sensorStatus');
+            const doorIcon = icon.querySelector('i');
+
+            if (status && status.status === 'connected') {
+                icon.classList.remove('error');
+
+                if (doorOpen === true) {
+                    icon.classList.remove('connected');
+                    icon.style.background = 'rgba(255, 167, 38, 0.15)';
+                    icon.style.color = 'var(--accent-warning)';
+                    doorIcon.className = 'fas fa-door-open';
+                    statusEl.textContent = 'OPEN';
+                    statusEl.style.color = 'var(--accent-warning)';
+                } else if (doorOpen === false) {
+                    icon.classList.add('connected');
+                    icon.style.background = '';
+                    icon.style.color = '';
+                    doorIcon.className = 'fas fa-door-closed';
+                    statusEl.textContent = 'CLOSED';
+                    statusEl.style.color = 'var(--accent-success)';
+                } else {
+                    icon.classList.add('connected');
+                    icon.style.background = '';
+                    icon.style.color = '';
+                    statusEl.textContent = 'Connected';
+                    statusEl.style.color = '';
+                }
+            } else {
+                icon.classList.remove('connected');
+                icon.classList.add('error');
+                icon.style.background = '';
+                icon.style.color = '';
+                statusEl.textContent = status?.status || 'Disconnected';
+                statusEl.style.color = '';
             }
         }
 
@@ -735,7 +828,7 @@
 
         function renderLogs(logs) {
             const container = document.getElementById('logsContainer');
-            
+
             if (!logs || logs.length === 0) {
                 container.innerHTML = '<div class="log-entry"><span class="timestamp">No logs available</span></div>';
                 return;
@@ -878,7 +971,7 @@
             try {
                 const response = await fetch(`${API_BASE}/api/logs/export?format=json`);
                 const data = await response.json();
-                
+
                 const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -886,7 +979,7 @@
                 a.download = `monitoni-logs-${new Date().toISOString().split('T')[0]}.json`;
                 a.click();
                 URL.revokeObjectURL(url);
-                
+
                 showToast('Logs exported', 'success');
             } catch (error) {
                 showToast('Export failed', 'error');
@@ -911,4 +1004,5 @@
         }
     </script>
 </body>
+
 </html>

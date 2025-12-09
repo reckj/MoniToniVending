@@ -134,6 +134,7 @@ class DatabaseManager:
     async def get_logs(
         self,
         limit: int = 100,
+        offset: int = 0,
         level: Optional[LogLevel] = None,
         purchase_id: Optional[str] = None,
         start_date: Optional[str] = None,
@@ -144,6 +145,7 @@ class DatabaseManager:
         
         Args:
             limit: Maximum number of logs to return
+            offset: Number of logs to skip (for pagination)
             level: Filter by log level
             purchase_id: Filter by purchase ID
             start_date: Filter by start date (ISO format)
@@ -171,8 +173,8 @@ class DatabaseManager:
             query += " AND timestamp <= ?"
             params.append(end_date)
             
-        query += " ORDER BY id DESC LIMIT ?"
-        params.append(limit)
+        query += " ORDER BY id DESC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
         
         async with self._connection.cursor() as cursor:
             await cursor.execute(query, params)
@@ -192,6 +194,28 @@ class DatabaseManager:
                 logs.append(log)
                 
             return logs
+    
+    async def export_logs_json(
+        self,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None
+    ) -> str:
+        """
+        Export logs as JSON string for API.
+        
+        Args:
+            start_date: Optional start date filter
+            end_date: Optional end date filter
+            
+        Returns:
+            JSON string of logs
+        """
+        logs = await self.get_logs(
+            limit=10000,
+            start_date=start_date,
+            end_date=end_date
+        )
+        return json.dumps(logs)
             
     async def get_statistics(self) -> Dict[str, Any]:
         """

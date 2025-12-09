@@ -32,6 +32,7 @@ class StatusResponse(BaseModel):
     hardware: Dict[str, Any]
     statistics: Dict[str, Any]
     state: str
+    door_open: Optional[bool] = None
 
 
 class LogEntry(BaseModel):
@@ -207,12 +208,21 @@ class TelemetryServer:
                     "server_incidents": 0
                 }
             
+            # Get door sensor state
+            door_open = None
+            if self.hardware.sensor:
+                try:
+                    door_open = await self.hardware.sensor.get_door_state()
+                except Exception:
+                    pass
+            
             return StatusResponse(
                 machine_id=self.config.machine_id,
                 timestamp=datetime.now().isoformat(),
                 hardware=hw_status,
                 statistics=stats,
-                state=self._current_state
+                state=self._current_state,
+                door_open=door_open
             )
         
         @self.app.get("/api/logs", response_model=LogsResponse)
