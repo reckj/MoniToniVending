@@ -145,7 +145,7 @@ class TelemetryServer:
         
     def _verify_pin(self, pin: str) -> bool:
         """Verify debug PIN."""
-        return pin == str(self.config.debug.pin)
+        return pin == str(self.config.telemetry.debug_pin)
         
     def _setup_routes(self):
         """Setup API routes."""
@@ -217,7 +217,7 @@ class TelemetryServer:
                     pass
             
             return StatusResponse(
-                machine_id=self.config.machine_id,
+                machine_id=self.config.system.machine_id,
                 timestamp=datetime.now().isoformat(),
                 hardware=hw_status,
                 statistics=stats,
