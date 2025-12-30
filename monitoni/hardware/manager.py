@@ -107,7 +107,8 @@ class HardwareManager:
         """Initialize LED controller."""
         try:
             zones = self.config.led.zones
-            
+            animations = self.config.led.animations
+
             if self.use_mock:
                 self.led = MockLEDController(
                     pixel_count=self.config.hardware.wled.pixel_count,
@@ -120,7 +121,8 @@ class HardwareManager:
                         universe=self.config.hardware.wled.universe,
                         pixel_count=self.config.hardware.wled.pixel_count,
                         fps=self.config.hardware.wled.fps,
-                        zones=zones
+                        zones=zones,
+                        animations=animations
                     )
                 except ImportError:
                     print("ArtNet library not available, using mock")
@@ -128,9 +130,9 @@ class HardwareManager:
                         pixel_count=self.config.hardware.wled.pixel_count,
                         zones=zones
                     )
-                    
+
             return await self.led.connect()
-            
+
         except Exception as e:
             print(f"Failed to initialize LED: {e}")
             # Fallback to mock

@@ -29,29 +29,32 @@ class WLEDController(LEDController):
         universe: int = 0,
         pixel_count: int = 300,
         fps: int = 30,
-        zones: List[List[int]] = None
+        zones: List[List[int]] = None,
+        animations: Dict[str, Any] = None
     ):
         """
         Initialize WLED controller.
-        
+
         Args:
             ip_address: WLED controller IP address
             universe: ArtNet universe
             pixel_count: Total number of LEDs
             fps: Frames per second for animations
             zones: LED zones as [[start, end], ...] pairs
+            animations: Animation configurations from config file
         """
         super().__init__("WLED")
-        
+
         if not ARTNET_AVAILABLE:
             raise ImportError("stupidArtnet not available. Install with: pip install stupidArtnet")
-            
+
         self.ip_address = ip_address
         self.universe = universe
         self.pixel_count = pixel_count
         self.fps = fps
         self.zones = zones or []
-        
+        self.animations = animations or {}
+
         self.artnet: Optional[StupidArtnet] = None
         self._current_brightness = 1.0
         self._animation_task: Optional[asyncio.Task] = None
@@ -214,72 +217,241 @@ class WLEDController(LEDController):
             self.last_error = str(e)
             return False
             
-    async def play_animation(self, animation_name: str) -> bool:
-        """Play predefined animation."""
+    async def play_animation(self, animation_name: str, **kwargs) -> bool:
+        """
+        Play predefined animation.
+
+        Args:
+            animation_name: Name of animation to play (from config or built-in)
+            **kwargs: Override animation parameters (brightness, speed, color, etc.)
+
+        Returns:
+            True if animation started successfully
+        """
         # Stop any running animation
         if self._animation_task and not self._animation_task.done():
             self._animation_task.cancel()
-            
+            try:
+                await self._animation_task
+            except asyncio.CancelledError:
+                pass
+
         # Start new animation
         self._animation_task = asyncio.create_task(
-            self._run_animation(animation_name)
+            self._run_animation(animation_name, **kwargs)
         )
-        
+
+        return True
+
+    def stop_animation(self) -> bool:
+        """
+        Stop currently running animation.
+
+        Returns:
+            True if animation was stopped
+        """
+        if self._animation_task and not self._animation_task.done():
+            self._animation_task.cancel()
+            return True
+        return False
+
+    def is_animating(self) -> bool:
+        """
+        Check if animation is currently running.
+
+        Returns:
+            True if animation is running
+        """
+        return self._animation_task is not None and not self._animation_task.done()
+
+    async def play_config_animation(self, animation_name: str, **overrides) -> bool:
+        """
+        Play animation from configuration.
+
+        Args:
+            animation_name: Name of animation in config (idle, sleep, valid_purchase, etc.)
+            **overrides: Override config parameters
+
+        Returns:
+            True if animation started
+        """
+        if animation_name not in self.animations:
+            self.last_error = f"Animation '{animation_name}' not found in config"
+            return False
+
+        anim_config = self.animations[animation_name].copy()
+        anim_config.update(overrides)
+
+        return await self.play_animation(animation_name, **anim_config)
+
+    async def highlight_zone(
+        self,
+        zone: int,
+        color: Optional[Tuple[int, int, int]] = None,
+        brightness: float = 1.0,
+        fade_in: bool = True
+    ) -> bool:
+        """
+        Highlight a specific zone (used for level selection).
+
+        Args:
+            zone: Zone index to highlight
+            color: RGB color tuple, defaults to green (0, 255, 0)
+            brightness: Brightness level (0.0-1.0)
+            fade_in: Fade in the highlight instead of instant
+
+        Returns:
+            True if successful
+        """
+        if not self.is_connected():
+            return False
+
+        if color is None:
+            color = (0, 255, 0)  # Default green
+
+        r, g, b = color
+
+        if fade_in:
+            # Fade in over 0.5 seconds
+            steps = 10
+            for step in range(steps + 1):
+                current_brightness = brightness * (step / steps)
+                await self.set_zone_color(zone, r, g, b, current_brightness)
+                await asyncio.sleep(0.05)
+        else:
+            await self.set_zone_color(zone, r, g, b, brightness)
+
         return True
         
-    async def _run_animation(self, animation_name: str) -> None:
-        """Run animation loop."""
-        # This is a simplified version - in production, load from config
+    async def _run_animation(self, animation_name: str, **kwargs) -> None:
+        """
+        Run animation loop.
+
+        Args:
+            animation_name: Name of animation type
+            **kwargs: Animation parameters (color, brightness, speed, duration_s, etc.)
+        """
         try:
-            if animation_name == "rainbow_chase":
-                await self._rainbow_chase()
-            elif animation_name == "breathing":
-                await self._breathing(0, 50, 100)
-            elif animation_name == "flash":
-                await self._flash(255, 0, 0, flashes=3)
+            # Get parameters from config or use defaults
+            anim_type = kwargs.get('type', animation_name)
+            color = kwargs.get('color', [0, 150, 255])
+            brightness = kwargs.get('brightness', 1.0)
+            speed = kwargs.get('speed', 1.0)
+            duration_s = kwargs.get('duration_s', 3.0)
+            flashes = kwargs.get('flashes', 3)
+
+            # Convert color list to tuple
+            if isinstance(color, list):
+                r, g, b = color
             else:
-                # Default to solid color
-                await self.set_color(0, 150, 255)
+                r, g, b = color
+
+            # Run the appropriate animation
+            if anim_type == "solid":
+                await self.set_color(r, g, b, brightness)
+
+            elif anim_type == "rainbow_chase":
+                await self._rainbow_chase(duration=duration_s, speed=speed, brightness=brightness)
+
+            elif anim_type == "breathing":
+                await self._breathing(r, g, b, speed=speed, brightness=brightness)
+
+            elif anim_type == "flash":
+                await self._flash(r, g, b, flashes=flashes, brightness=brightness)
+
+            elif anim_type == "zone_highlight":
+                # This is handled by highlight_zone method
+                pass
+
+            else:
+                # Unknown animation, default to solid color
+                await self.set_color(r, g, b, brightness)
+
         except asyncio.CancelledError:
             pass
             
-    async def _rainbow_chase(self, duration: float = 3.0) -> None:
-        """Rainbow chase animation."""
+    async def _rainbow_chase(
+        self,
+        duration: float = 3.0,
+        speed: float = 1.0,
+        brightness: float = 1.0
+    ) -> None:
+        """
+        Rainbow chase animation.
+
+        Args:
+            duration: Animation duration in seconds
+            speed: Animation speed multiplier
+            brightness: Brightness level (0.0-1.0)
+        """
         steps = int(duration * self.fps)
-        
+
         for step in range(steps):
             pixels = []
             for i in range(self.pixel_count):
-                hue = (i + step * 5) % 360
-                r, g, b = self._hsv_to_rgb(hue, 1.0, 1.0)
+                hue = (i + step * 5 * speed) % 360
+                r, g, b = self._hsv_to_rgb(hue, 1.0, brightness)
                 pixels.extend([r, g, b])
-                
+
             self.artnet.set(pixels)
             self.artnet.show()
             await asyncio.sleep(1.0 / self.fps)
             
-    async def _breathing(self, r: int, g: int, b: int, speed: float = 2.0) -> None:
-        """Breathing animation (loops until cancelled)."""
+    async def _breathing(
+        self,
+        r: int,
+        g: int,
+        b: int,
+        speed: float = 2.0,
+        brightness: float = 1.0
+    ) -> None:
+        """
+        Breathing animation (loops until cancelled).
+
+        Args:
+            r, g, b: RGB color values
+            speed: Animation speed (seconds per cycle)
+            brightness: Maximum brightness level (0.0-1.0)
+        """
         while True:
             # Fade in
             for i in range(100):
-                brightness = i / 100.0
-                await self.set_color(r, g, b, brightness)
+                current_brightness = brightness * (i / 100.0)
+                await self.set_color(r, g, b, current_brightness)
                 await asyncio.sleep(speed / 100.0)
-                
+
             # Fade out
             for i in range(100, 0, -1):
-                brightness = i / 100.0
-                await self.set_color(r, g, b, brightness)
+                current_brightness = brightness * (i / 100.0)
+                await self.set_color(r, g, b, current_brightness)
                 await asyncio.sleep(speed / 100.0)
-                
-    async def _flash(self, r: int, g: int, b: int, flashes: int = 3) -> None:
-        """Flash animation."""
+
+    async def _flash(
+        self,
+        r: int,
+        g: int,
+        b: int,
+        flashes: int = 3,
+        brightness: float = 1.0,
+        speed: float = 1.0
+    ) -> None:
+        """
+        Flash animation.
+
+        Args:
+            r, g, b: RGB color values
+            flashes: Number of flashes
+            brightness: Flash brightness (0.0-1.0)
+            speed: Speed multiplier (affects flash duration)
+        """
+        flash_on_time = 0.2 / speed
+        flash_off_time = 0.2 / speed
+
         for _ in range(flashes):
-            await self.set_color(r, g, b, 1.0)
-            await asyncio.sleep(0.2)
+            await self.set_color(r, g, b, brightness)
+            await asyncio.sleep(flash_on_time)
             await self.turn_off()
-            await asyncio.sleep(0.2)
+            await asyncio.sleep(flash_off_time)
             
     def _hsv_to_rgb(self, h: float, s: float, v: float) -> Tuple[int, int, int]:
         """Convert HSV to RGB."""
