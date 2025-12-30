@@ -1,0 +1,12 @@
+base_url: https://www.monitoni.zhdk.ch/purchase
+level_urls:
+  1: https://www.monitoni.zhdk.ch/buy/level1
+  2: https://www.monitoni.zhdk.ch/buy/level2
+  3: ""  # Empty means use base_url with ?level=3&machine=...
+  4: ""
+  5: ""
+  6: ""
+  7: ""
+  8: ""
+  9: ""
+  10: ""

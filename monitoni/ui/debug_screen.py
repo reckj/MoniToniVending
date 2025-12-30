@@ -491,7 +491,11 @@ class DebugScreen(Screen):
         # Statistics Section
         stats_section = self._create_stats_section()
         content.add_widget(stats_section)
-        
+
+        # QR URL Management Section
+        qr_section = self._create_qr_management_section()
+        content.add_widget(qr_section)
+
         # Logs Section
         logs_section = self._create_logs_section()
         content.add_widget(logs_section)
@@ -779,7 +783,192 @@ class DebugScreen(Screen):
         asyncio.create_task(self._update_statistics())
         
         return section
-        
+
+    def _create_qr_management_section(self):
+        """Create QR URL management section."""
+        section = SectionCard(title="QR Code URL Management")
+
+        # Current base URL display
+        self.qr_base_url_label = MDLabel(
+            text=f"Base URL: {self.config.vending.qr_urls.base_url}",
+            size_hint=(1, None),
+            height="40dp",
+            font_style='Body2'
+        )
+        section.add_content(self.qr_base_url_label)
+
+        # Buttons row
+        buttons_row = BoxLayout(size_hint=(1, None), height="60dp", spacing="10dp")
+
+        # Load from file button
+        load_file_btn = MDRaisedButton(
+            text="Load from USB",
+            size_hint=(0.5, 1),
+            font_size="16sp",
+            md_bg_color=(0.2, 0.6, 0.8, 1),
+            on_release=lambda x: self._show_file_chooser()
+        )
+        buttons_row.add_widget(load_file_btn)
+
+        # Refresh/reload config button
+        refresh_btn = MDRaisedButton(
+            text="Reload Config",
+            size_hint=(0.5, 1),
+            font_size="16sp",
+            md_bg_color=(0.4, 0.6, 0.4, 1),
+            on_release=lambda x: self._reload_qr_config()
+        )
+        buttons_row.add_widget(refresh_btn)
+
+        section.add_content(buttons_row)
+
+        # Info label
+        info_label = MDLabel(
+            text="Load QR URLs from JSON/YAML file on USB stick.\nExpected format: {\"base_url\": \"...\", \"level_urls\": {\"1\": \"...\", ...}}",
+            size_hint=(1, None),
+            height="60dp",
+            font_style='Caption',
+            theme_text_color='Secondary'
+        )
+        section.add_content(info_label)
+
+        return section
+
+    def _show_file_chooser(self):
+        """Show file chooser dialog for QR URL file selection."""
+        from kivy.uix.filechooser import FileChooserListView
+        from kivy.uix.popup import Popup
+
+        # Create file chooser
+        file_chooser = FileChooserListView(
+            path="/media",  # Common mount point for USB sticks
+            filters=['*.json', '*.yaml', '*.yml']
+        )
+
+        # Create popup
+        popup_content = BoxLayout(orientation='vertical', spacing="10dp", padding="10dp")
+        popup_content.add_widget(file_chooser)
+
+        # Buttons
+        btn_row = BoxLayout(size_hint=(1, None), height="50dp", spacing="10dp")
+
+        def on_load():
+            if file_chooser.selection:
+                selected_file = file_chooser.selection[0]
+                popup.dismiss()
+                self._load_qr_urls_from_file(selected_file)
+
+        load_btn = MDRaisedButton(
+            text="Load",
+            size_hint=(0.5, 1),
+            on_release=lambda x: on_load()
+        )
+        btn_row.add_widget(load_btn)
+
+        cancel_btn = MDRaisedButton(
+            text="Cancel",
+            size_hint=(0.5, 1),
+            md_bg_color=(0.5, 0.5, 0.5, 1),
+            on_release=lambda x: popup.dismiss()
+        )
+        btn_row.add_widget(cancel_btn)
+
+        popup_content.add_widget(btn_row)
+
+        # Create and open popup
+        popup = Popup(
+            title="Select QR URL Configuration File",
+            content=popup_content,
+            size_hint=(0.9, 0.9)
+        )
+        popup.open()
+
+    def _load_qr_urls_from_file(self, file_path: str):
+        """Load QR URLs from selected file."""
+        try:
+            from monitoni.core.config import get_config_manager
+            from pathlib import Path
+
+            config_manager = get_config_manager()
+            if config_manager:
+                # Load QR URLs from file
+                success = config_manager.update_qr_urls_from_file(Path(file_path))
+
+                if success:
+                    self._show_message_dialog(
+                        "Success",
+                        f"QR URLs loaded successfully from:\n{file_path}\n\nQR codes will be regenerated on next use.",
+                        success=True
+                    )
+                    # Update display
+                    self.qr_base_url_label.text = f"Base URL: {self.config.vending.qr_urls.base_url}"
+            else:
+                self._show_message_dialog(
+                    "Error",
+                    "Config manager not available",
+                    success=False
+                )
+
+        except FileNotFoundError:
+            self._show_message_dialog(
+                "Error",
+                f"File not found:\n{file_path}",
+                success=False
+            )
+        except ValueError as e:
+            self._show_message_dialog(
+                "Error",
+                f"Invalid file format:\n{str(e)}",
+                success=False
+            )
+        except Exception as e:
+            self._show_message_dialog(
+                "Error",
+                f"Failed to load QR URLs:\n{str(e)}",
+                success=False
+            )
+
+    def _reload_qr_config(self):
+        """Reload QR configuration from config file."""
+        try:
+            from monitoni.core.config import get_config_manager
+
+            config_manager = get_config_manager()
+            if config_manager:
+                config_manager.load()
+                self.qr_base_url_label.text = f"Base URL: {self.config.vending.qr_urls.base_url}"
+                self._show_message_dialog(
+                    "Success",
+                    "QR URL configuration reloaded",
+                    success=True
+                )
+            else:
+                self._show_message_dialog(
+                    "Error",
+                    "Config manager not available",
+                    success=False
+                )
+        except Exception as e:
+            self._show_message_dialog(
+                "Error",
+                f"Failed to reload config:\n{str(e)}",
+                success=False
+            )
+
+    def _show_message_dialog(self, title: str, message: str, success: bool = True):
+        """Show a message dialog."""
+        dialog = MDDialog(
+            title=title,
+            text=message,
+            buttons=[
+                MDFlatButton(
+                    text="OK",
+                    on_release=lambda x: dialog.dismiss()
+                )
+            ]
+        )
+        dialog.open()
+
     def _create_logs_section(self):
         """Create logs section."""
         section = SectionCard(title="Logs")
