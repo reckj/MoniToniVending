@@ -92,6 +92,19 @@ class AudioControlRequest(BaseModel):
     volume: Optional[float] = None
 
 
+class QRURLsResponse(BaseModel):
+    """QR code URLs response."""
+    base_url: str
+    level_urls: Dict[int, str]
+
+
+class QRURLsUpdateRequest(BaseModel):
+    """QR code URLs update request."""
+    pin: str
+    base_url: Optional[str] = None
+    level_urls: Optional[Dict[int, str]] = None
+
+
 class TelemetryServer:
     """
     FastAPI-based telemetry server.
@@ -374,9 +387,77 @@ class TelemetryServer:
                     await self.hardware.relay.set_relay(i, False)
             
             asyncio.create_task(cascade())
-            
+
             return {"success": True, "message": "Relay cascade test started"}
-        
+
+        @self.app.get("/api/qr-urls", response_model=QRURLsResponse)
+        async def get_qr_urls():
+            """Get current QR code URLs configuration."""
+            qr_config = self.config.vending.qr_urls
+
+            return QRURLsResponse(
+                base_url=qr_config.base_url,
+                level_urls=qr_config.level_urls
+            )
+
+        @self.app.post("/api/qr-urls")
+        async def update_qr_urls(request: QRURLsUpdateRequest):
+            """Update QR code URLs (PIN required)."""
+            if not self._verify_pin(request.pin):
+                raise HTTPException(status_code=403, detail="Invalid PIN")
+
+            try:
+                from monitoni.core.config import get_config_manager
+                config_manager = get_config_manager()
+
+                if config_manager is None:
+                    raise HTTPException(status_code=500, detail="Config manager not available")
+
+                # Update QR URLs
+                config_manager.update_qr_urls(
+                    base_url=request.base_url,
+                    level_urls=request.level_urls
+                )
+
+                # Regenerate QR codes if needed
+                self._trigger_qr_regeneration()
+
+                # Broadcast update to WebSocket clients
+                await self._broadcast({
+                    "type": "qr_urls_updated",
+                    "data": {
+                        "base_url": request.base_url,
+                        "level_urls": request.level_urls
+                    }
+                })
+
+                return {
+                    "success": True,
+                    "message": "QR URLs updated successfully",
+                    "base_url": self.config.vending.qr_urls.base_url,
+                    "level_urls": dict(self.config.vending.qr_urls.level_urls)
+                }
+
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Failed to update QR URLs: {str(e)}")
+
+        @self.app.post("/api/qr-urls/regenerate")
+        async def regenerate_qr_codes(pin: str = Query(...)):
+            """Regenerate all QR codes (PIN required)."""
+            if not self._verify_pin(pin):
+                raise HTTPException(status_code=403, detail="Invalid PIN")
+
+            try:
+                self._trigger_qr_regeneration()
+
+                return {
+                    "success": True,
+                    "message": "QR code regeneration triggered"
+                }
+
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Failed to regenerate QR codes: {str(e)}")
+
         @self.app.websocket("/ws")
         async def websocket_endpoint(websocket: WebSocket):
             """WebSocket for real-time updates."""
@@ -449,6 +530,24 @@ class TelemetryServer:
             "type": event_type,
             **data
         })
+
+    def _trigger_qr_regeneration(self):
+        """
+        Trigger QR code regeneration.
+
+        This method signals that QR codes should be regenerated.
+        The actual regeneration happens in the customer UI when QR codes are displayed.
+        """
+        # Delete existing QR code cache to force regeneration
+        from pathlib import Path
+        qr_cache_dir = Path("assets/qr_codes")
+
+        if qr_cache_dir.exists():
+            for qr_file in qr_cache_dir.glob("level_*.png"):
+                try:
+                    qr_file.unlink()
+                except Exception:
+                    pass
 
 
 # Global server instance

@@ -32,10 +32,6 @@ from monitoni.ui.icons import register_icon_font, get_icon
 register_icon_font()
 
 
-# QR code base URL
-QR_CODE_BASE_URL = "https://www.monitoni.zhdk.ch"
-
-
 class ProductButton(MDRaisedButton):
     """Button for product level selection."""
     
@@ -258,20 +254,22 @@ class DebugAccessIndicator(Widget):
 
 class QRCodeView(BoxLayout):
     """View for displaying QR code and return button."""
-    
-    def __init__(self, on_return_callback, **kwargs):
+
+    def __init__(self, on_return_callback, app_config: Config, **kwargs):
         """
         Initialize QR code view.
-        
+
         Args:
             on_return_callback: Callback when return button pressed
+            app_config: System configuration for QR URL generation
         """
         super().__init__(**kwargs)
         self.orientation = 'vertical'
         self.padding = "20dp"
         self.spacing = "15dp"
         self.on_return_callback = on_return_callback
-        
+        self.app_config = app_config
+
         # QR code cache directory
         self.qr_cache_dir = Path("assets/qr_codes")
         self.qr_cache_dir.mkdir(parents=True, exist_ok=True)
@@ -373,15 +371,18 @@ class QRCodeView(BoxLayout):
         
     def _generate_qr_code(self, level: int, output_path: Path):
         """
-        Generate QR code for level.
-        
+        Generate QR code for level using configured URLs.
+
         Args:
             level: Product level
             output_path: Path to save QR code
         """
-        # Create URL for this level
-        url = f"{QR_CODE_BASE_URL}?level={level}"
-        
+        # Get URL for this level from configuration
+        url = self.app_config.vending.qr_urls.get_url_for_level(
+            level,
+            self.app_config.system.machine_id
+        )
+
         # Generate QR code
         qr = qrcode.QRCode(
             version=1,
@@ -391,10 +392,10 @@ class QRCodeView(BoxLayout):
         )
         qr.add_data(url)
         qr.make(fit=True)
-        
+
         # Create image with white background
         img = qr.make_image(fill_color="black", back_color="white")
-        
+
         # Save QR code
         img.save(str(output_path))
         
@@ -470,7 +471,10 @@ class CustomerScreen(Screen):
         self.levels_view = self._build_levels_view()
         
         # QR code view
-        self.qr_view = QRCodeView(on_return_callback=self._on_return_pressed)
+        self.qr_view = QRCodeView(
+            on_return_callback=self._on_return_pressed,
+            app_config=self.app_config
+        )
         
         # Start with levels view
         self.main_layout.add_widget(self.levels_view)

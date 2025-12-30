@@ -75,12 +75,41 @@ class TimingsConfig(BaseModel):
     purchase_timeout_s: int = 120
 
 
+class QRURLsConfig(BaseModel):
+    """QR code URL configuration for each level."""
+    base_url: str = "https://example.com/purchase"
+    level_urls: Dict[int, str] = {}
+
+    def get_url_for_level(self, level: int, machine_id: str) -> str:
+        """
+        Get URL for specific level.
+
+        Args:
+            level: Product level (1-10)
+            machine_id: Machine ID
+
+        Returns:
+            URL string for QR code generation
+        """
+        # Check if level has custom URL
+        if level in self.level_urls and self.level_urls[level]:
+            url = self.level_urls[level]
+            # Replace placeholders
+            url = url.replace("{level}", str(level))
+            url = url.replace("{machine_id}", machine_id)
+            return url
+        else:
+            # Use base URL with parameters
+            return f"{self.base_url}?level={level}&machine={machine_id}"
+
+
 class VendingConfig(BaseModel):
     """Vending machine configuration."""
     levels: int = 10
     motor: MotorConfig
     door_lock: DoorLockConfig
     timings: TimingsConfig
+    qr_urls: QRURLsConfig
 
 
 class LEDZone(BaseModel):
@@ -302,9 +331,78 @@ class ConfigManager:
         self.local_config_path.parent.mkdir(parents=True, exist_ok=True)
         with open(self.local_config_path, 'w') as f:
             yaml.dump(local_config, f, default_flow_style=False, sort_keys=False)
-            
+
         # Reload configuration
         self.load()
+
+    def update_qr_urls(self, base_url: Optional[str] = None, level_urls: Optional[Dict[int, str]] = None) -> None:
+        """
+        Update QR code URLs in local configuration.
+
+        Args:
+            base_url: New base URL (optional)
+            level_urls: Dictionary of level-specific URLs (optional)
+        """
+        updates = {"vending": {"qr_urls": {}}}
+
+        if base_url is not None:
+            updates["vending"]["qr_urls"]["base_url"] = base_url
+
+        if level_urls is not None:
+            updates["vending"]["qr_urls"]["level_urls"] = level_urls
+
+        self.save_local(updates)
+
+    def update_qr_urls_from_file(self, file_path: Path) -> bool:
+        """
+        Update QR code URLs from a JSON or YAML file.
+
+        Expected file format (JSON or YAML):
+        {
+            "base_url": "https://example.com/purchase",
+            "level_urls": {
+                "1": "https://example.com/level1",
+                "2": "https://example.com/level2",
+                ...
+            }
+        }
+
+        Args:
+            file_path: Path to JSON or YAML file with QR URL configuration
+
+        Returns:
+            True if successful
+
+        Raises:
+            FileNotFoundError: If file doesn't exist
+            ValueError: If file format is invalid
+        """
+        if not file_path.exists():
+            raise FileNotFoundError(f"QR URL file not found: {file_path}")
+
+        # Read file based on extension
+        with open(file_path, 'r') as f:
+            if file_path.suffix.lower() in ['.yaml', '.yml']:
+                data = yaml.safe_load(f)
+            elif file_path.suffix.lower() == '.json':
+                import json
+                data = json.load(f)
+            else:
+                raise ValueError(f"Unsupported file format: {file_path.suffix}")
+
+        # Validate data
+        if not isinstance(data, dict):
+            raise ValueError("Invalid QR URL file format: root must be an object")
+
+        base_url = data.get('base_url')
+        level_urls = data.get('level_urls', {})
+
+        # Convert string keys to integers for level_urls
+        if level_urls:
+            level_urls = {int(k): str(v) for k, v in level_urls.items()}
+
+        self.update_qr_urls(base_url=base_url, level_urls=level_urls)
+        return True
 
 
 # Global configuration instance

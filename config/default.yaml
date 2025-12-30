@@ -60,7 +60,25 @@ vending:
     sleep_timeout_s: 60  # Enter sleep mode after inactivity
     door_alarm_delay_s: 10  # Alarm if door not closed
     purchase_timeout_s: 120  # Cancel purchase after timeout
-    
+
+  # QR Code URLs for each level
+  # These URLs are displayed to customers for payment
+  # Can be updated via telemetry dashboard or debug screen
+  qr_urls:
+    base_url: "https://example.com/purchase"  # Override in local.yaml
+    # Individual level URLs (optional - if not set, uses base_url with level parameter)
+    level_urls:
+      1: ""  # Empty = use base_url?level=1&machine={machine_id}
+      2: ""
+      3: ""
+      4: ""
+      5: ""
+      6: ""
+      7: ""
+      8: ""
+      9: ""
+      10: ""
+
 # LED Animations
 led:
   # Pixel zone mapping for 10 levels (start, end)
