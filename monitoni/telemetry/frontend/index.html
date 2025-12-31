@@ -7,28 +7,23 @@
     <title>MoniToni Telemetry Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-
-        /* Enhanced Color Palette - Cyberpunk/Neon Theme */
+        /* Tactical UI Theme - Retro/Military/CD Player Aesthetic */
         :root {
-            --bg-primary: #0a0e27;
-            --bg-secondary: #151937;
-            --bg-card: #1a1f3a;
-            --bg-card-hover: #252b4a;
-            --accent-primary: #00f5ff;
-            --accent-secondary: #b026ff;
-            --accent-tertiary: #ff2e97;
-            --accent-success: #00ff88;
-            --accent-warning: #ffb800;
-            --accent-danger: #ff3864;
+            --bg-primary: #000000;
+            --bg-secondary: #0a0a0a;
+            --bg-card: #000000;
+            --border-primary: #ffffff;
+            --border-secondary: #666666;
             --text-primary: #ffffff;
-            --text-secondary: #b8c5d6;
-            --border-color: #2a3354;
-            --glow-primary: rgba(0, 245, 255, 0.4);
-            --glow-secondary: rgba(176, 38, 255, 0.4);
-            --shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            --text-secondary: #999999;
+            --text-dim: #666666;
+            --accent-live: #00ff00;
+            --accent-warning: #ffaa00;
+            --accent-danger: #ff0000;
+            --accent-info: #00aaff;
         }
 
         * {
@@ -38,15 +33,17 @@
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: 'Courier New', 'IBM Plex Mono', 'Consolas', monospace;
             background: var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
             position: relative;
             overflow-x: hidden;
+            font-size: 13px;
+            letter-spacing: 0.5px;
         }
 
-        /* Animated Background */
+        /* Optional scanline effect */
         body::before {
             content: '';
             position: fixed;
@@ -54,206 +51,164 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background:
-                radial-gradient(circle at 20% 50%, rgba(176, 38, 255, 0.08) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(0, 245, 255, 0.08) 0%, transparent 50%),
-                radial-gradient(circle at 40% 20%, rgba(255, 46, 151, 0.06) 0%, transparent 50%);
-            animation: bgShift 20s ease-in-out infinite alternate;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0) 0px,
+                rgba(0, 0, 0, 0) 1px,
+                rgba(255, 255, 255, 0.01) 1px,
+                rgba(255, 255, 255, 0.01) 2px
+            );
             pointer-events: none;
-            z-index: 0;
+            z-index: 1000;
+            opacity: 0.3;
         }
 
-        @keyframes bgShift {
-            0% { transform: translate(0, 0) scale(1); }
-            100% { transform: translate(30px, -30px) scale(1.05); }
-        }
-
-        /* Grid Lines Background */
-        body::after {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image:
-                linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
-            background-size: 50px 50px;
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        /* Glassmorphism Effect */
-        .glass {
-            background: rgba(26, 31, 58, 0.7);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        /* Enhanced Header */
+        /* Header */
         .header {
-            background: linear-gradient(135deg, rgba(21, 25, 55, 0.95) 0%, rgba(26, 31, 58, 0.95) 100%);
-            backdrop-filter: blur(20px);
-            padding: 1.5rem 2.5rem;
-            border-bottom: 2px solid transparent;
-            border-image: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary), var(--accent-tertiary)) 1;
+            background: var(--bg-primary);
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border-primary);
+            position: relative;
+            z-index: 100;
+        }
+
+        .header-content {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
         }
 
         .header h1 {
-            font-size: 2rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            text-shadow: 0 0 30px var(--glow-primary);
-            animation: headerGlow 3s ease-in-out infinite alternate;
+            font-size: 1.5rem;
+            font-weight: normal;
+            letter-spacing: 3px;
+            text-transform: uppercase;
         }
 
-        @keyframes headerGlow {
-            0% { filter: drop-shadow(0 0 5px var(--glow-primary)); }
-            100% { filter: drop-shadow(0 0 20px var(--glow-primary)); }
+        .header-status {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+            font-size: 0.85rem;
         }
 
-        /* Neon Connection Status */
-        .connection-status {
+        .status-item {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            padding: 0.75rem 1.5rem;
-            background: rgba(26, 31, 58, 0.6);
-            border: 1px solid var(--border-color);
-            border-radius: 30px;
-            font-size: 0.95rem;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            gap: 0.5rem;
         }
 
         .status-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: var(--accent-danger);
-            box-shadow: 0 0 20px var(--accent-danger);
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            width: 8px;
+            height: 8px;
+            border: 1px solid var(--text-primary);
+            background: transparent;
         }
 
-        .status-dot.connected {
-            background: var(--accent-success);
-            box-shadow: 0 0 20px var(--accent-success);
+        .status-dot.active {
+            background: var(--accent-live);
+            box-shadow: 0 0 10px var(--accent-live);
+            animation: pulse 2s ease-in-out infinite;
         }
 
         @keyframes pulse {
-            0%, 100% {
-                opacity: 1;
-                transform: scale(1);
-            }
-            50% {
-                opacity: 0.5;
-                transform: scale(1.2);
-            }
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
-        /* Main Layout */
-        .main-container {
-            display: grid;
-            grid-template-columns: repeat(12, 1fr);
-            gap: 1.5rem;
+        /* Main Container */
+        .container {
             padding: 2rem;
             max-width: 1800px;
             margin: 0 auto;
-            position: relative;
-            z-index: 1;
         }
 
-        @media (max-width: 1400px) {
-            .main-container {
-                grid-template-columns: repeat(6, 1fr);
-            }
+        /* Grid Layout */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 1.5rem;
         }
 
-        @media (max-width: 768px) {
-            .main-container {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* Enhanced Cards with Neon Borders */
+        /* Tactical Card with Corner Brackets */
         .card {
-            background: linear-gradient(135deg, rgba(26, 31, 58, 0.8) 0%, rgba(21, 25, 55, 0.8) 100%);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 1.75rem;
-            border: 1px solid rgba(0, 245, 255, 0.2);
-            box-shadow:
-                var(--shadow),
-                0 0 0 1px rgba(0, 245, 255, 0.1),
-                inset 0 1px 0 rgba(255, 255, 255, 0.05);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: var(--bg-card);
+            border: 1px solid var(--border-primary);
+            padding: 1.5rem;
             position: relative;
-            overflow: hidden;
+            grid-column: span 12;
+        }
+
+        /* Corner brackets */
+        .card::before,
+        .card::after {
+            content: '';
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border: 1px solid var(--border-primary);
         }
 
         .card::before {
-            content: '';
+            top: -1px;
+            left: -1px;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .card::after {
+            top: -1px;
+            right: -1px;
+            border-left: none;
+            border-bottom: none;
+        }
+
+        .card .corner-bl,
+        .card .corner-br {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, transparent 0%, rgba(0, 245, 255, 0.03) 100%);
-            opacity: 0;
-            transition: opacity 0.4s ease;
-            pointer-events: none;
+            width: 12px;
+            height: 12px;
+            border: 1px solid var(--border-primary);
         }
 
-        .card:hover {
-            transform: translateY(-5px);
-            border-color: rgba(0, 245, 255, 0.4);
-            box-shadow:
-                0 15px 50px rgba(0, 0, 0, 0.5),
-                0 0 20px rgba(0, 245, 255, 0.3),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        .card .corner-bl {
+            bottom: -1px;
+            left: -1px;
+            border-right: none;
+            border-top: none;
         }
 
-        .card:hover::before {
-            opacity: 1;
+        .card .corner-br {
+            bottom: -1px;
+            right: -1px;
+            border-left: none;
+            border-top: none;
         }
 
+        /* Card Header */
         .card-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 1.5rem;
-            padding-bottom: 1.25rem;
-            border-bottom: 1px solid rgba(0, 245, 255, 0.15);
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-secondary);
         }
 
         .card-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-weight: normal;
+            letter-spacing: 2px;
+            text-transform: uppercase;
         }
 
-        .card-title i {
-            color: var(--accent-primary);
-            filter: drop-shadow(0 0 8px var(--accent-primary));
+        .card-meta {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            letter-spacing: 1px;
         }
 
-        /* Statistics Cards - Large & Visual */
+        /* Stats Grid */
         .stats-grid {
             grid-column: span 12;
             display: grid;
@@ -273,420 +228,286 @@
             }
         }
 
+        /* Stat Card */
         .stat-card {
-            background: linear-gradient(135deg, rgba(26, 31, 58, 0.9) 0%, rgba(21, 25, 55, 0.9) 100%);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 2rem;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--bg-card);
+            border: 1px solid var(--border-primary);
+            padding: 1.5rem;
             position: relative;
-            overflow: hidden;
-            transition: all 0.4s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        /* Add corners to stat cards */
+        .stat-card::before,
+        .stat-card::after,
+        .stat-card .corner-bl,
+        .stat-card .corner-br {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border: 1px solid var(--border-primary);
         }
 
         .stat-card::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, var(--stat-color) 0%, transparent 70%);
-            opacity: 0.1;
-            transition: opacity 0.4s ease;
+            top: -1px;
+            left: -1px;
+            border-right: none;
+            border-bottom: none;
         }
 
-        .stat-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            border-color: var(--stat-color);
-            box-shadow: 0 15px 60px rgba(0, 0, 0, 0.5), 0 0 30px var(--stat-glow);
+        .stat-card::after {
+            top: -1px;
+            right: -1px;
+            border-left: none;
+            border-bottom: none;
         }
 
-        .stat-card:hover::before {
-            opacity: 0.2;
+        .stat-card .corner-bl {
+            bottom: -1px;
+            left: -1px;
+            border-right: none;
+            border-top: none;
         }
 
-        .stat-card.success {
-            --stat-color: var(--accent-success);
-            --stat-glow: rgba(0, 255, 136, 0.3);
-        }
-
-        .stat-card.danger {
-            --stat-color: var(--accent-danger);
-            --stat-glow: rgba(255, 56, 100, 0.3);
-        }
-
-        .stat-card.primary {
-            --stat-color: var(--accent-primary);
-            --stat-glow: rgba(0, 245, 255, 0.3);
-        }
-
-        .stat-card.warning {
-            --stat-color: var(--accent-warning);
-            --stat-glow: rgba(255, 184, 0, 0.3);
-        }
-
-        .stat-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.8rem;
-            margin-bottom: 1.25rem;
-            background: linear-gradient(135deg, var(--stat-color) 0%, transparent 100%);
-            border: 2px solid var(--stat-color);
-            color: var(--stat-color);
-            box-shadow: 0 0 30px var(--stat-glow), inset 0 0 20px var(--stat-glow);
-            animation: iconPulse 3s ease-in-out infinite;
-        }
-
-        @keyframes iconPulse {
-            0%, 100% {
-                transform: scale(1);
-                box-shadow: 0 0 30px var(--stat-glow), inset 0 0 20px var(--stat-glow);
-            }
-            50% {
-                transform: scale(1.05);
-                box-shadow: 0 0 40px var(--stat-glow), inset 0 0 30px var(--stat-glow);
-            }
+        .stat-card .corner-br {
+            bottom: -1px;
+            right: -1px;
+            border-left: none;
+            border-top: none;
         }
 
         .stat-label {
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            margin-bottom: 0.5rem;
+            font-size: 0.7rem;
+            letter-spacing: 1.5px;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: 500;
+            color: var(--text-secondary);
         }
 
         .stat-value {
             font-size: 2.5rem;
-            font-weight: 700;
-            color: var(--stat-color);
+            font-weight: normal;
+            letter-spacing: 2px;
             line-height: 1;
-            margin-bottom: 0.5rem;
-            text-shadow: 0 0 20px var(--stat-glow);
-            font-variant-numeric: tabular-nums;
         }
 
-        .stat-change {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-            display: flex;
-            align-items: center;
-            gap: 0.35rem;
-        }
-
-        .stat-change i {
+        .stat-unit {
             font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-top: 0.25rem;
         }
 
-        .stat-change.positive {
-            color: var(--accent-success);
-        }
-
-        .stat-change.negative {
-            color: var(--accent-danger);
-        }
-
-        /* Chart Containers */
-        .chart-container {
-            position: relative;
-            width: 100%;
-            height: 300px;
-            padding: 1rem;
-        }
-
+        /* Chart Card */
         .chart-card {
             grid-column: span 6;
         }
 
-        @media (max-width: 1200px) {
+        @media (max-width: 968px) {
             .chart-card {
                 grid-column: span 12;
             }
         }
 
-        /* Hardware Status - Icon Grid */
-        .hardware-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1.25rem;
-        }
-
-        .hardware-item {
-            display: flex;
-            align-items: center;
-            gap: 1.25rem;
-            padding: 1.25rem;
-            background: rgba(255, 255, 255, 0.02);
-            border-radius: 15px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: all 0.3s ease;
-        }
-
-        .hardware-item:hover {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(0, 245, 255, 0.3);
-            transform: translateX(5px);
-        }
-
-        .hardware-icon {
-            width: 55px;
-            height: 55px;
-            border-radius: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            flex-shrink: 0;
+        .chart-container {
+            width: 100%;
+            height: 250px;
             position: relative;
         }
 
-        .hardware-icon::before {
-            content: '';
-            position: absolute;
-            inset: -2px;
-            border-radius: 15px;
-            padding: 2px;
-            background: linear-gradient(135deg, var(--hw-color) 0%, transparent 100%);
-            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            -webkit-mask-composite: xor;
-            mask-composite: exclude;
+        /* Buttons - Tactical Style */
+        button, .btn {
+            background: transparent;
+            border: 1px solid var(--border-primary);
+            color: var(--text-primary);
+            padding: 0.5rem 1.5rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
         }
 
-        .hardware-icon.connected {
-            --hw-color: var(--accent-success);
-            background: rgba(0, 255, 136, 0.15);
-            color: var(--accent-success);
-            box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+        button:hover, .btn:hover {
+            background: var(--text-primary);
+            color: var(--bg-primary);
         }
 
-        .hardware-icon.error {
-            --hw-color: var(--accent-danger);
-            background: rgba(255, 56, 100, 0.15);
+        button:active, .btn:active {
+            transform: translateY(1px);
+        }
+
+        button.primary {
+            border-color: var(--accent-live);
+            color: var(--accent-live);
+        }
+
+        button.primary:hover {
+            background: var(--accent-live);
+            color: var(--bg-primary);
+        }
+
+        button.danger {
+            border-color: var(--accent-danger);
             color: var(--accent-danger);
-            box-shadow: 0 0 20px rgba(255, 56, 100, 0.2);
         }
 
-        .hardware-info h4 {
-            font-size: 1rem;
-            margin-bottom: 0.35rem;
-            font-weight: 600;
+        button.danger:hover {
+            background: var(--accent-danger);
+            color: var(--bg-primary);
         }
 
-        .hardware-info span {
-            font-size: 0.85rem;
+        /* Status Badge */
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border: 1px solid var(--border-primary);
+            font-size: 0.65rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .badge.live {
+            border-color: var(--accent-live);
+            color: var(--accent-live);
+        }
+
+        .badge.warning {
+            border-color: var(--accent-warning);
+            color: var(--accent-warning);
+        }
+
+        .badge.danger {
+            border-color: var(--accent-danger);
+            color: var(--accent-danger);
+        }
+
+        /* Status Grid Items */
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+
+        .status-item-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            border: 1px solid var(--border-secondary);
+        }
+
+        .status-label {
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
             color: var(--text-secondary);
         }
 
-        /* Buttons with Neon Effect */
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 10px;
-            font-size: 0.95rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            display: inline-flex;
-            align-items: center;
+        .status-value {
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+        }
+
+        /* Control Panel */
+        .control-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .control-label {
+            font-size: 0.7rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .button-group {
+            display: flex;
             gap: 0.5rem;
-            position: relative;
-            overflow: hidden;
-            font-family: 'Inter', sans-serif;
+            flex-wrap: wrap;
         }
 
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.3);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
+        .button-group button {
+            flex: 1;
+            min-width: 100px;
         }
 
-        .btn:hover::before {
-            width: 300px;
-            height: 300px;
-        }
-
-        .btn span, .btn i {
-            position: relative;
-            z-index: 1;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
-            color: white;
-            box-shadow: 0 4px 15px rgba(0, 245, 255, 0.3);
-        }
-
-        .btn-primary:hover {
-            box-shadow: 0 6px 25px rgba(0, 245, 255, 0.5);
-            transform: translateY(-2px);
-        }
-
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.1);
+        /* Input Fields */
+        input, select, textarea {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-secondary);
             color: var(--text-primary);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 0.5rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            width: 100%;
         }
 
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.15);
-            border-color: rgba(0, 245, 255, 0.5);
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--border-primary);
         }
 
-        /* Full width cards */
-        .full-width {
-            grid-column: span 12;
+        /* Divider */
+        .divider {
+            height: 1px;
+            background: var(--border-secondary);
+            margin: 1.5rem 0;
         }
 
+        /* Half-width cards */
         .half-width {
             grid-column: span 6;
         }
 
-        .third-width {
-            grid-column: span 4;
-        }
-
-        @media (max-width: 1200px) {
-            .half-width, .third-width {
+        @media (max-width: 968px) {
+            .half-width {
                 grid-column: span 12;
             }
         }
 
-        /* Loading Animation */
-        @keyframes shimmer {
-            0% {
-                background-position: -1000px 0;
-            }
-            100% {
-                background-position: 1000px 0;
-            }
-        }
-
-        .loading {
-            background: linear-gradient(90deg,
-                rgba(255, 255, 255, 0.05) 25%,
-                rgba(255, 255, 255, 0.1) 50%,
-                rgba(255, 255, 255, 0.05) 75%
-            );
-            background-size: 1000px 100%;
-            animation: shimmer 2s infinite;
-        }
-
-/* QR Code Management Styles */
-        .qr-url-display {
-            margin-bottom: 1.5rem;
-        }
-
-        .qr-update-form {
-            background: var(--bg-secondary);
-            padding: 1.5rem;
-            border-radius: 12px;
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-            color: var(--text-primary);
-        }
-
-        .input-field {
-            width: 100%;
-            padding: 0.75rem 1rem;
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            color: var(--text-primary);
-            font-size: 0.9rem;
-            font-family: 'Inter', sans-serif;
-        }
-
-        .input-field:focus {
-            outline: none;
-            border-color: var(--accent-primary);
-        }
-
-        .input-field[readonly] {
-            background: var(--bg-secondary);
-            opacity: 0.7;
-        }
-
-        .level-url-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1rem;
-            margin-top: 1rem;
-            margin-bottom: 1rem;
-            display: none;
-        }
-
-        .level-url-grid.show {
-            display: grid;
-        }
-
-        .level-url-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .level-url-item label {
-            min-width: 80px;
-            margin-bottom: 0;
-        }
-
-        .level-url-item input {
-            flex: 1;
-        }
-
-        .qr-preview-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 1rem;
-        }
-
-        .qr-preview-item {
-            background: var(--bg-secondary);
-            padding: 1rem;
-            border-radius: 12px;
-            text-align: center;
-        }
-
-        .qr-preview-item h5 {
-            margin-bottom: 0.75rem;
-            color: var(--accent-primary);
-        }
-
-        .qr-preview-canvas {
-            background: white;
-            padding: 10px;
-            border-radius: 8px;
-            margin: 0 auto;
-        }
-
-        .btn-small {
-            padding: 0.5rem 1rem;
-            font-size: 0.85rem;
-        }
-
+        /* Full-width cards */
         .full-width {
-            grid-column: 1 / -1;
+            grid-column: span 12;
+        }
+
+        /* Icon replacements - use simple text indicators */
+        .icon {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            text-align: center;
+            line-height: 16px;
+            font-size: 0.75rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .header {
+                padding: 1rem;
+            }
+
+            .header h1 {
+                font-size: 1.2rem;
+            }
+
+            .stat-value {
+                font-size: 2rem;
+            }
         }
 
     </style>
@@ -695,13 +516,14 @@
 
 <body>
     <header class="header">
-        <h1>
-            <i class="fas fa-vending-machine"></i>
-            MoniToni Telemetry
-        </h1>
-        <div class="connection-status">
-            <div class="status-dot" id="connectionDot"></div>
-            <span id="connectionText">Connecting...</span>
+        <div class="header-content">
+            <h1>MONITONI // TELEMETRY_DASHBOARD</h1>
+            <div class="header-status">
+                <div class="status-item">
+                    <div class="status-dot" id="connectionDot"></div>
+                    <span id="connectionText">CONNECTING...</span>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -709,63 +531,42 @@
         <!-- Statistics Cards Grid -->
         <div class="stats-grid">
             <!-- Successful Purchases -->
-            <div class="stat-card success">
-                <div class="stat-icon">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <div class="stat-label">Completed Purchases</div>
+            <div class="stat-card">
+                <div class="stat-label">COMPLETED_PURCHASES</div>
                 <div class="stat-value" id="completedPurchases">0</div>
-                <div class="stat-change positive" id="completedChange">
-                    <i class="fas fa-arrow-up"></i>
-                    <span>--</span>
-                </div>
+                <div class="stat-unit">TRANSACTIONS</div>
             </div>
 
             <!-- Failed Purchases -->
-            <div class="stat-card danger">
-                <div class="stat-icon">
-                    <i class="fas fa-times-circle"></i>
-                </div>
-                <div class="stat-label">Failed Purchases</div>
+            <div class="stat-card">
+                <div class="stat-label">FAILED_PURCHASES</div>
                 <div class="stat-value" id="failedPurchases">0</div>
-                <div class="stat-change negative" id="failedChange">
-                    <i class="fas fa-arrow-down"></i>
-                    <span>--</span>
-                </div>
+                <div class="stat-unit">ERRORS</div>
             </div>
 
             <!-- Machine State -->
-            <div class="stat-card primary">
-                <div class="stat-icon">
-                    <i class="fas fa-microchip"></i>
-                </div>
-                <div class="stat-label">Machine State</div>
+            <div class="stat-card">
+                <div class="stat-label">MACHINE_STATE</div>
                 <div class="stat-value" id="machineState" style="font-size: 1.8rem;">IDLE</div>
-                <div class="stat-change">
-                    <i class="fas fa-info-circle"></i>
-                    <span id="machineId">VM001</span>
-                </div>
+                <div class="stat-unit">ID: <span id="machineId">VM001</span></div>
             </div>
 
             <!-- System Uptime -->
-            <div class="stat-card warning">
-                <div class="stat-icon">
-                    <i class="fas fa-clock"></i>
-                </div>
-                <div class="stat-label">System Uptime</div>
+            <div class="stat-card">
+                <div class="stat-label">SYSTEM_UPTIME</div>
                 <div class="stat-value" id="uptime" style="font-size: 1.6rem;">--</div>
-                <div class="stat-change">
-                    <i class="fas fa-server"></i>
-                    <span>Running</span>
-                </div>
+                <div class="stat-unit">RUNTIME</div>
             </div>
         </div>
 
         <!-- Charts Row -->
         <div class="chart-card">
             <div class="card">
+                <div class="corner-bl"></div>
+                <div class="corner-br"></div>
                 <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-chart-pie"></i> Purchase Statistics</h3>
+                    <h3 class="card-title">PURCHASE_STATISTICS</h3>
+                    <span class="badge live">LIVE</span>
                 </div>
                 <div class="chart-container">
                     <canvas id="purchaseChart"></canvas>
@@ -775,8 +576,11 @@
 
         <div class="chart-card">
             <div class="card">
+                <div class="corner-bl"></div>
+                <div class="corner-br"></div>
                 <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-chart-bar"></i> Hardware Health</h3>
+                    <h3 class="card-title">HARDWARE_HEALTH</h3>
+                    <span class="badge live">LIVE</span>
                 </div>
                 <div class="chart-container">
                     <canvas id="hardwareChart"></canvas>
@@ -786,11 +590,11 @@
 
         <!-- Hardware Status Card -->
         <div class="card half-width">
+            <div class="corner-bl"></div>
+            <div class="corner-br"></div>
             <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-microchip"></i> Hardware Status</h3>
-                <button class="btn btn-secondary" onclick="refreshStatus()">
-                    <i class="fas fa-sync-alt"></i> Refresh
-                </button>
+                <h3 class="card-title">HARDWARE_STATUS</h3>
+                <button onclick="refreshStatus()">[ REFRESH ]</button>
             </div>
             <div class="hardware-grid">
                 <div class="hardware-item">
@@ -799,7 +603,7 @@
                     </div>
                     <div class="hardware-info">
                         <h4>Relay Controller</h4>
-                        <span id="relayStatus">Connected</span>
+                        <span id="relayStatus">CONNECTED</span>
                     </div>
                 </div>
                 <div class="hardware-item">
@@ -808,7 +612,7 @@
                     </div>
                     <div class="hardware-info">
                         <h4>LED Controller</h4>
-                        <span id="ledStatus">Connected</span>
+                        <span id="ledStatus">CONNECTED</span>
                     </div>
                 </div>
                 <div class="hardware-item">
@@ -817,7 +621,7 @@
                     </div>
                     <div class="hardware-info">
                         <h4>Door Sensor</h4>
-                        <span id="sensorStatus">Connected</span>
+                        <span id="sensorStatus">CONNECTED</span>
                     </div>
                 </div>
                 <div class="hardware-item">
@@ -826,7 +630,7 @@
                     </div>
                     <div class="hardware-info">
                         <h4>Audio</h4>
-                        <span id="audioStatus">Connected</span>
+                        <span id="audioStatus">CONNECTED</span>
                     </div>
                 </div>
             </div>
@@ -834,93 +638,54 @@
 
         <!-- LED Control Card -->
         <div class="card half-width">
+            <div class="corner-bl"></div>
+            <div class="corner-br"></div>
             <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-palette"></i> LED Control</h3>
+                <h3 class="card-title">LED_CONTROL</h3>
             </div>
-            <div class="control-section">
-                <h4>Solid Color</h4>
-                <div class="color-picker-container">
+            <div class="control-group">
+                <label class="control-label">SOLID_COLOR</label>
+                <div class="button-group">
                     <input type="color" class="color-input" id="colorPicker" value="#00d4ff">
-                    <button class="btn btn-primary" onclick="setLEDColor()">
-                        <i class="fas fa-check"></i> Apply
-                    </button>
-                    <button class="btn btn-secondary" onclick="turnOffLEDs()">
-                        <i class="fas fa-power-off"></i> Off
-                    </button>
+                    <button class="primary" onclick="setLEDColor()">[ APPLY ]</button>
+                    <button onclick="turnOffLEDs()">[ OFF ]</button>
                 </div>
             </div>
-            <div class="control-section">
-                <h4>Animations</h4>
-                <div class="btn-group">
-                    <button class="btn btn-secondary" onclick="playAnimation('rainbow_chase')">
-                        <i class="fas fa-rainbow"></i> Rainbow
-                    </button>
-                    <button class="btn btn-secondary" onclick="playAnimation('breathing')">
-                        <i class="fas fa-wind"></i> Breathing
-                    </button>
-                    <button class="btn btn-secondary" onclick="playAnimation('flash')">
-                        <i class="fas fa-bolt"></i> Flash
-                    </button>
+            <div class="divider"></div>
+            <div class="control-group">
+                <label class="control-label">ANIMATIONS</label>
+                <div class="button-group">
+                    <button onclick="playAnimation('rainbow_chase')">[ RAINBOW ]</button>
+                    <button onclick="playAnimation('breathing')">[ BREATHING ]</button>
+                    <button onclick="playAnimation('flash')">[ FLASH ]</button>
                 </div>
             </div>
         </div>
 
         <!-- Relay Control Card -->
         <div class="card full-width">
+            <div class="corner-bl"></div>
+            <div class="corner-br"></div>
             <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-th"></i> Relay Control</h3>
-                <button class="btn btn-primary" onclick="testAllRelays()">
-                    <i class="fas fa-play"></i> Test All
-                </button>
+                <h3 class="card-title">RELAY_CONTROL</h3>
+                <button class="primary" onclick="testAllRelays()">[ TEST_ALL ]</button>
             </div>
-            <div class="pin-container">
-                <span class="pin-label">PIN:</span>
-                <input type="password" class="pin-input" id="pinInput" maxlength="4" placeholder="****">
+            <div class="control-group">
+                <label class="control-label">PIN</label>
+                <input type="password" id="pinInput" maxlength="4" placeholder="****" style="max-width: 120px;">
             </div>
             <div class="relay-grid" id="relayGrid">
                 <!-- Relay buttons generated by JS -->
             </div>
         </div>
 
-        <!-- LED Control Card -->
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-palette"></i> LED Control</h3>
-            </div>
-            <div class="control-section">
-                <h4>Solid Color</h4>
-                <div class="color-picker-container">
-                    <input type="color" class="color-input" id="colorPicker" value="#00d4ff">
-                    <button class="btn btn-primary" onclick="setLEDColor()">
-                        <i class="fas fa-check"></i> Apply
-                    </button>
-                    <button class="btn btn-secondary" onclick="turnOffLEDs()">
-                        <i class="fas fa-power-off"></i> Off
-                    </button>
-                </div>
-            </div>
-            <div class="control-section">
-                <h4>Animations</h4>
-                <div class="btn-group">
-                    <button class="btn btn-secondary" onclick="playAnimation('rainbow_chase')">
-                        <i class="fas fa-rainbow"></i> Rainbow
-                    </button>
-                    <button class="btn btn-secondary" onclick="playAnimation('breathing')">
-                        <i class="fas fa-wind"></i> Breathing
-                    </button>
-                    <button class="btn btn-secondary" onclick="playAnimation('flash')">
-                        <i class="fas fa-bolt"></i> Flash
-                    </button>
-                </div>
-            </div>
-        </div>
         <!-- QR Code Management Card -->
         <div class="card full-width">
+            <div class="corner-bl"></div>
+            <div class="corner-br"></div>
             <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-qrcode"></i> QR Code Management</h3>
-                <button class="btn btn-primary" onclick="loadQRURLs()">
-                    <i class="fas fa-sync-alt"></i> Refresh
-                </button>
+                <h3 class="card-title">QR_CODE_MANAGEMENT</h3>
+                <button class="primary" onclick="loadQRURLs()">[ REFRESH ]</button>
             </div>
 
             <!-- Current QR URLs -->
@@ -985,20 +750,18 @@
 
         <!-- Logs Card -->
         <div class="card full-width">
+            <div class="corner-bl"></div>
+            <div class="corner-br"></div>
             <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-list-alt"></i> System Logs</h3>
-                <div class="btn-group">
-                    <button class="btn btn-secondary" onclick="refreshLogs()">
-                        <i class="fas fa-sync-alt"></i> Refresh
-                    </button>
-                    <button class="btn btn-secondary" onclick="exportLogs()">
-                        <i class="fas fa-download"></i> Export
-                    </button>
+                <h3 class="card-title">SYSTEM_LOGS</h3>
+                <div class="button-group">
+                    <button onclick="refreshLogs()">[ REFRESH ]</button>
+                    <button onclick="exportLogs()">[ EXPORT ]</button>
                 </div>
             </div>
             <div class="logs-container" id="logsContainer">
                 <div class="log-entry">
-                    <span class="timestamp">Loading...</span>
+                    <span class="timestamp">LOADING...</span>
                 </div>
             </div>
         </div>
@@ -1043,16 +806,16 @@
 
             ws.onopen = () => {
                 document.getElementById('connectionDot').classList.add('connected');
-                document.getElementById('connectionText').textContent = 'Connected';
+                document.getElementById('connectionText').textContent = 'CONNECTED';
                 if (wsFirstConnect) {
-                    showToast('Connected to telemetry server', 'success');
+                    showToast('CONNECTED TO TELEMETRY SERVER', 'success');
                     wsFirstConnect = false;
                 }
             };
 
             ws.onclose = () => {
                 document.getElementById('connectionDot').classList.remove('connected');
-                document.getElementById('connectionText').textContent = 'Disconnected';
+                document.getElementById('connectionText').textContent = 'DISCONNECTED';
                 setTimeout(connectWebSocket, 5000);
             };
 
@@ -1125,11 +888,11 @@
             if (status && status.status === 'connected') {
                 icon.classList.remove('error');
                 icon.classList.add('connected');
-                statusEl.textContent = 'Connected';
+                statusEl.textContent = 'CONNECTED';
             } else {
                 icon.classList.remove('connected');
                 icon.classList.add('error');
-                statusEl.textContent = status?.status || 'Disconnected';
+                statusEl.textContent = status?.status || 'DISCONNECTED';
             }
         }
 
@@ -1159,7 +922,7 @@
                     icon.classList.add('connected');
                     icon.style.background = '';
                     icon.style.color = '';
-                    statusEl.textContent = 'Connected';
+                    statusEl.textContent = 'CONNECTED';
                     statusEl.style.color = '';
                 }
             } else {
@@ -1167,7 +930,7 @@
                 icon.classList.add('error');
                 icon.style.background = '';
                 icon.style.color = '';
-                statusEl.textContent = status?.status || 'Disconnected';
+                statusEl.textContent = status?.status || 'DISCONNECTED';
                 statusEl.style.color = '';
             }
         }
@@ -1547,24 +1310,24 @@
         let purchaseChart, hardwareChart;
 
         function initializeCharts() {
-            // Purchase Success Rate Chart (Donut)
+            // Purchase Success Rate Chart (Donut) - Tactical Style
             const purchaseCtx = document.getElementById('purchaseChart');
             if (purchaseCtx) {
                 purchaseChart = new Chart(purchaseCtx, {
                     type: 'doughnut',
                     data: {
-                        labels: ['Successful', 'Failed'],
+                        labels: ['SUCCESSFUL', 'FAILED'],
                         datasets: [{
                             data: [0, 0],
                             backgroundColor: [
-                                'rgba(0, 255, 136, 0.8)',
-                                'rgba(255, 56, 100, 0.8)'
+                                'rgba(255, 255, 255, 0.3)',
+                                'rgba(255, 255, 255, 0.1)'
                             ],
                             borderColor: [
-                                'rgba(0, 255, 136, 1)',
-                                'rgba(255, 56, 100, 1)'
+                                '#ffffff',
+                                '#666666'
                             ],
-                            borderWidth: 2
+                            borderWidth: 1
                         }]
                     },
                     options: {
@@ -1574,22 +1337,31 @@
                             legend: {
                                 position: 'bottom',
                                 labels: {
-                                    color: '#b8c5d6',
+                                    color: '#ffffff',
                                     font: {
-                                        size: 12,
-                                        family: 'Inter'
+                                        size: 11,
+                                        family: '"Courier New", monospace',
+                                        weight: 'normal'
                                     },
-                                    padding: 15
+                                    padding: 12,
+                                    boxWidth: 12,
+                                    boxHeight: 12
                                 }
                             },
                             tooltip: {
-                                backgroundColor: 'rgba(26, 31, 58, 0.95)',
-                                titleColor: '#fff',
-                                bodyColor: '#b8c5d6',
-                                borderColor: 'rgba(0, 245, 255, 0.3)',
+                                backgroundColor: '#000000',
+                                titleColor: '#ffffff',
+                                bodyColor: '#ffffff',
+                                borderColor: '#ffffff',
                                 borderWidth: 1,
-                                padding: 12,
-                                displayColors: true,
+                                padding: 8,
+                                displayColors: false,
+                                titleFont: {
+                                    family: '"Courier New", monospace'
+                                },
+                                bodyFont: {
+                                    family: '"Courier New", monospace'
+                                },
                                 callbacks: {
                                     label: function(context) {
                                         const label = context.label || '';
@@ -1601,35 +1373,25 @@
                                 }
                             }
                         },
-                        cutout: '70%'
+                        cutout: '65%'
                     }
                 });
             }
 
-            // Hardware Health Chart (Bar)
+            // Hardware Health Chart (Bar) - Tactical Style
             const hardwareCtx = document.getElementById('hardwareChart');
             if (hardwareCtx) {
                 hardwareChart = new Chart(hardwareCtx, {
                     type: 'bar',
                     data: {
-                        labels: ['Relay', 'LED', 'Sensor', 'Audio'],
+                        labels: ['RELAY', 'LED', 'SENSOR', 'AUDIO'],
                         datasets: [{
-                            label: 'Status',
+                            label: 'STATUS',
                             data: [0, 0, 0, 0],
-                            backgroundColor: [
-                                'rgba(0, 245, 255, 0.6)',
-                                'rgba(176, 38, 255, 0.6)',
-                                'rgba(255, 46, 151, 0.6)',
-                                'rgba(0, 255, 136, 0.6)'
-                            ],
-                            borderColor: [
-                                'rgba(0, 245, 255, 1)',
-                                'rgba(176, 38, 255, 1)',
-                                'rgba(255, 46, 151, 1)',
-                                'rgba(0, 255, 136, 1)'
-                            ],
-                            borderWidth: 2,
-                            borderRadius: 8
+                            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                            borderColor: '#ffffff',
+                            borderWidth: 1,
+                            borderRadius: 0
                         }]
                     },
                     options: {
@@ -1640,24 +1402,34 @@
                                 beginAtZero: true,
                                 max: 1,
                                 ticks: {
-                                    color: '#b8c5d6',
-                                    font: { family: 'Inter' },
+                                    color: '#ffffff',
+                                    font: {
+                                        family: '"Courier New", monospace',
+                                        size: 10
+                                    },
                                     callback: function(value) {
-                                        return value === 1 ? 'OK' : 'Error';
-                                    }
+                                        return value === 1 ? 'OK' : 'ERR';
+                                    },
+                                    stepSize: 0.5
                                 },
                                 grid: {
-                                    color: 'rgba(255, 255, 255, 0.05)',
-                                    borderColor: 'rgba(255, 255, 255, 0.1)'
+                                    color: 'rgba(255, 255, 255, 0.1)',
+                                    borderColor: '#ffffff',
+                                    borderWidth: 1
                                 }
                             },
                             x: {
                                 ticks: {
-                                    color: '#b8c5d6',
-                                    font: { family: 'Inter' }
+                                    color: '#ffffff',
+                                    font: {
+                                        family: '"Courier New", monospace',
+                                        size: 10
+                                    }
                                 },
                                 grid: {
-                                    display: false
+                                    display: false,
+                                    borderColor: '#ffffff',
+                                    borderWidth: 1
                                 }
                             }
                         },
@@ -1666,12 +1438,18 @@
                                 display: false
                             },
                             tooltip: {
-                                backgroundColor: 'rgba(26, 31, 58, 0.95)',
-                                titleColor: '#fff',
-                                bodyColor: '#b8c5d6',
-                                borderColor: 'rgba(0, 245, 255, 0.3)',
+                                backgroundColor: '#000000',
+                                titleColor: '#ffffff',
+                                bodyColor: '#ffffff',
+                                borderColor: '#ffffff',
                                 borderWidth: 1,
-                                padding: 12
+                                padding: 8,
+                                titleFont: {
+                                    family: '"Courier New", monospace'
+                                },
+                                bodyFont: {
+                                    family: '"Courier New", monospace'
+                                }
                             }
                         }
                     }
@@ -1709,7 +1487,24 @@
             }
         });
 
-</script>
+
+        // Add corner brackets to all cards
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.card, .stat-card');
+            cards.forEach(card => {
+                if (!card.querySelector('.corner-bl')) {
+                    const cornerBL = document.createElement('div');
+                    cornerBL.className = 'corner-bl';
+                    card.appendChild(cornerBL);
+
+                    const cornerBR = document.createElement('div');
+                    cornerBR.className = 'corner-br';
+                    card.appendChild(cornerBR);
+                }
+            });
+        });
+
+    </script>
 </body>
 
 </html>
