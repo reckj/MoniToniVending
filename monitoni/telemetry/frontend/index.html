@@ -116,7 +116,56 @@
             50% { opacity: 0.5; }
         }
 
+        /* Tab Navigation */
+        .tab-nav {
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-primary);
+            padding: 0 2rem;
+            display: flex;
+            gap: 0.5rem;
+            overflow-x: auto;
+        }
+
+        .tab-button {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-secondary);
+            padding: 1rem 1.5rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            letter-spacing: 1.5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .tab-button:hover {
+            color: var(--text-primary);
+            border-bottom-color: var(--border-secondary);
+        }
+
+        .tab-button.active {
+            color: var(--text-primary);
+            border-bottom-color: var(--text-primary);
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
         /* Main Container */
+        .main-container {
+            padding: 2rem;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
         .container {
             padding: 2rem;
             max-width: 1800px;
@@ -210,10 +259,10 @@
 
         /* Stats Grid */
         .stats-grid {
-            grid-column: span 12;
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 1.5rem;
+            margin-bottom: 2rem;
         }
 
         @media (max-width: 1200px) {
@@ -224,6 +273,23 @@
 
         @media (max-width: 768px) {
             .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Dashboard Grid - Tiled Layout */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+
+        .dashboard-grid > .card:only-child {
+            grid-column: span 2;
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-grid {
                 grid-template-columns: 1fr;
             }
         }
@@ -527,241 +593,228 @@
         </div>
     </header>
 
+    <!-- Tab Navigation -->
+    <nav class="tab-nav">
+        <button class="tab-button active" onclick="switchTab('overview')">[ OVERVIEW ]</button>
+        <button class="tab-button" onclick="switchTab('control')">[ CONTROL ]</button>
+        <button class="tab-button" onclick="switchTab('system')">[ SYSTEM ]</button>
+        <button class="tab-button" onclick="switchTab('logs')">[ LOGS ]</button>
+    </nav>
+
     <main class="main-container">
-        <!-- Statistics Cards Grid -->
-        <div class="stats-grid">
-            <!-- Successful Purchases -->
-            <div class="stat-card">
-                <div class="stat-label">COMPLETED_PURCHASES</div>
-                <div class="stat-value" id="completedPurchases">0</div>
-                <div class="stat-unit">TRANSACTIONS</div>
-            </div>
-
-            <!-- Failed Purchases -->
-            <div class="stat-card">
-                <div class="stat-label">FAILED_PURCHASES</div>
-                <div class="stat-value" id="failedPurchases">0</div>
-                <div class="stat-unit">ERRORS</div>
-            </div>
-
-            <!-- Machine State -->
-            <div class="stat-card">
-                <div class="stat-label">MACHINE_STATE</div>
-                <div class="stat-value" id="machineState" style="font-size: 1.8rem;">IDLE</div>
-                <div class="stat-unit">ID: <span id="machineId">VM001</span></div>
-            </div>
-
-            <!-- System Uptime -->
-            <div class="stat-card">
-                <div class="stat-label">SYSTEM_UPTIME</div>
-                <div class="stat-value" id="uptime" style="font-size: 1.6rem;">--</div>
-                <div class="stat-unit">RUNTIME</div>
-            </div>
-        </div>
-
-        <!-- Charts Row -->
-        <div class="chart-card">
-            <div class="card">
-                <div class="corner-bl"></div>
-                <div class="corner-br"></div>
-                <div class="card-header">
-                    <h3 class="card-title">PURCHASE_STATISTICS</h3>
-                    <span class="badge live">LIVE</span>
+        <!-- OVERVIEW TAB -->
+        <div id="tab-overview" class="tab-content active">
+            <!-- Statistics Cards Grid - 4 columns -->
+            <div class="stats-grid">
+                <!-- Successful Purchases -->
+                <div class="stat-card">
+                    <div class="stat-label">COMPLETED_PURCHASES</div>
+                    <div class="stat-value" id="completedPurchases">0</div>
+                    <div class="stat-unit">TRANSACTIONS</div>
                 </div>
-                <div class="chart-container">
-                    <canvas id="purchaseChart"></canvas>
+
+                <!-- Failed Purchases -->
+                <div class="stat-card">
+                    <div class="stat-label">FAILED_PURCHASES</div>
+                    <div class="stat-value" id="failedPurchases">0</div>
+                    <div class="stat-unit">ERRORS</div>
+                </div>
+
+                <!-- Machine State -->
+                <div class="stat-card">
+                    <div class="stat-label">MACHINE_STATE</div>
+                    <div class="stat-value" id="machineState" style="font-size: 1.8rem;">IDLE</div>
+                    <div class="stat-unit">ID: <span id="machineId">VM001</span></div>
+                </div>
+
+                <!-- System Uptime -->
+                <div class="stat-card">
+                    <div class="stat-label">SYSTEM_UPTIME</div>
+                    <div class="stat-value" id="uptime" style="font-size: 1.6rem;">--</div>
+                    <div class="stat-unit">RUNTIME</div>
                 </div>
             </div>
-        </div>
 
-        <div class="chart-card">
-            <div class="card">
-                <div class="corner-bl"></div>
-                <div class="corner-br"></div>
-                <div class="card-header">
-                    <h3 class="card-title">HARDWARE_HEALTH</h3>
-                    <span class="badge live">LIVE</span>
-                </div>
-                <div class="chart-container">
-                    <canvas id="hardwareChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- Hardware Status Card -->
-        <div class="card half-width">
-            <div class="corner-bl"></div>
-            <div class="corner-br"></div>
-            <div class="card-header">
-                <h3 class="card-title">HARDWARE_STATUS</h3>
-                <button onclick="refreshStatus()">[ REFRESH ]</button>
-            </div>
-            <div class="hardware-grid">
-                <div class="hardware-item">
-                    <div class="hardware-icon connected" id="relayIcon">
-                        <i class="fas fa-toggle-on"></i>
+            <!-- Main Dashboard Grid - 2 columns -->
+            <div class="dashboard-grid">
+                <!-- Purchase Statistics Chart -->
+                <div class="card">
+                    <div class="corner-bl"></div>
+                    <div class="corner-br"></div>
+                    <div class="card-header">
+                        <h3 class="card-title">PURCHASE_STATISTICS</h3>
+                        <span class="badge live">LIVE</span>
                     </div>
-                    <div class="hardware-info">
-                        <h4>Relay Controller</h4>
-                        <span id="relayStatus">CONNECTED</span>
+                    <div class="chart-container">
+                        <canvas id="purchaseChart"></canvas>
                     </div>
                 </div>
-                <div class="hardware-item">
-                    <div class="hardware-icon connected" id="ledIcon">
-                        <i class="fas fa-lightbulb"></i>
+
+                <!-- Hardware Health Chart -->
+                <div class="card">
+                    <div class="corner-bl"></div>
+                    <div class="corner-br"></div>
+                    <div class="card-header">
+                        <h3 class="card-title">HARDWARE_HEALTH</h3>
+                        <span class="badge live">LIVE</span>
                     </div>
-                    <div class="hardware-info">
-                        <h4>LED Controller</h4>
-                        <span id="ledStatus">CONNECTED</span>
+                    <div class="chart-container">
+                        <canvas id="hardwareChart"></canvas>
                     </div>
                 </div>
-                <div class="hardware-item">
-                    <div class="hardware-icon connected" id="sensorIcon">
-                        <i class="fas fa-door-open"></i>
-                    </div>
-                    <div class="hardware-info">
-                        <h4>Door Sensor</h4>
-                        <span id="sensorStatus">CONNECTED</span>
-                    </div>
-                </div>
-                <div class="hardware-item">
-                    <div class="hardware-icon connected" id="audioIcon">
-                        <i class="fas fa-volume-up"></i>
-                    </div>
-                    <div class="hardware-info">
-                        <h4>Audio</h4>
-                        <span id="audioStatus">CONNECTED</span>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- LED Control Card -->
-        <div class="card half-width">
-            <div class="corner-bl"></div>
-            <div class="corner-br"></div>
-            <div class="card-header">
-                <h3 class="card-title">LED_CONTROL</h3>
-            </div>
-            <div class="control-group">
-                <label class="control-label">SOLID_COLOR</label>
-                <div class="button-group">
-                    <input type="color" class="color-input" id="colorPicker" value="#00d4ff">
-                    <button class="primary" onclick="setLEDColor()">[ APPLY ]</button>
-                    <button onclick="turnOffLEDs()">[ OFF ]</button>
-                </div>
-            </div>
-            <div class="divider"></div>
-            <div class="control-group">
-                <label class="control-label">ANIMATIONS</label>
-                <div class="button-group">
-                    <button onclick="playAnimation('rainbow_chase')">[ RAINBOW ]</button>
-                    <button onclick="playAnimation('breathing')">[ BREATHING ]</button>
-                    <button onclick="playAnimation('flash')">[ FLASH ]</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Relay Control Card -->
-        <div class="card full-width">
-            <div class="corner-bl"></div>
-            <div class="corner-br"></div>
-            <div class="card-header">
-                <h3 class="card-title">RELAY_CONTROL</h3>
-                <button class="primary" onclick="testAllRelays()">[ TEST_ALL ]</button>
-            </div>
-            <div class="control-group">
-                <label class="control-label">PIN</label>
-                <input type="password" id="pinInput" maxlength="4" placeholder="****" style="max-width: 120px;">
-            </div>
-            <div class="relay-grid" id="relayGrid">
-                <!-- Relay buttons generated by JS -->
-            </div>
-        </div>
-
-        <!-- QR Code Management Card -->
-        <div class="card full-width">
-            <div class="corner-bl"></div>
-            <div class="corner-br"></div>
-            <div class="card-header">
-                <h3 class="card-title">QR_CODE_MANAGEMENT</h3>
-                <button class="primary" onclick="loadQRURLs()">[ REFRESH ]</button>
-            </div>
-
-            <!-- Current QR URLs -->
-            <div class="control-section">
-                <h4>Current QR Code URLs</h4>
-                <div class="qr-url-display">
-                    <div class="form-group">
-                        <label>Base URL:</label>
-                        <input type="text" class="input-field" id="qrBaseUrl" readonly>
-                        <button class="btn btn-secondary btn-small" onclick="copyToClipboard(document.getElementById('qrBaseUrl').value)">
-                            <i class="fas fa-copy"></i>
-                        </button>
+                <!-- Hardware Status -->
+                <div class="card">
+                    <div class="corner-bl"></div>
+                    <div class="corner-br"></div>
+                    <div class="card-header">
+                        <h3 class="card-title">HARDWARE_STATUS</h3>
+                        <button onclick="refreshStatus()">[ REFRESH ]</button>
                     </div>
-                </div>
-            </div>
-
-            <!-- Update QR URLs -->
-            <div class="control-section">
-                <h4>Update QR URLs</h4>
-                <div class="qr-update-form">
-                    <div class="form-group">
-                        <label>New Base URL:</label>
-                        <input type="text" class="input-field" id="newQrBaseUrl" placeholder="https://example.com/purchase">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Level-Specific URLs (Optional):</label>
-                        <div class="level-url-grid" id="levelUrlsGrid">
-                            <!-- Generated by JavaScript -->
+                    <div class="status-grid">
+                        <div class="status-item-card">
+                            <span class="status-label">RELAY</span>
+                            <span class="status-value" id="relayStatus">CONNECTED</span>
                         </div>
-                        <button class="btn btn-secondary btn-small" onclick="toggleLevelURLs()">
-                            <i class="fas fa-chevron-down"></i> <span id="levelUrlsToggle">Show Level URLs</span>
-                        </button>
+                        <div class="status-item-card">
+                            <span class="status-label">LED</span>
+                            <span class="status-value" id="ledStatus">CONNECTED</span>
+                        </div>
+                        <div class="status-item-card">
+                            <span class="status-label">SENSOR</span>
+                            <span class="status-value" id="sensorStatus">CONNECTED</span>
+                        </div>
+                        <div class="status-item-card">
+                            <span class="status-label">AUDIO</span>
+                            <span class="status-value" id="audioStatus">CONNECTED</span>
+                        </div>
                     </div>
-
-                    <div class="form-group">
-                        <label>PIN:</label>
-                        <input type="password" class="input-field" id="qrUpdatePin" placeholder="Enter PIN">
-                    </div>
-
-                    <div class="btn-group">
-                        <button class="btn btn-primary" onclick="updateQRURLs()">
-                            <i class="fas fa-save"></i> Update URLs
-                        </button>
-                        <button class="btn btn-secondary" onclick="regenerateQRCodes()">
-                            <i class="fas fa-sync-alt"></i> Regenerate QR Codes
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- QR Code Preview -->
-            <div class="control-section">
-                <h4>Preview QR Codes</h4>
-                <div class="qr-preview-grid" id="qrPreviewGrid">
-                    <!-- Generated by JavaScript -->
                 </div>
             </div>
         </div>
 
+        <!-- CONTROL TAB -->
+        <div id="tab-control" class="tab-content">
+            <div class="dashboard-grid">
+                <!-- LED Control Card -->
+                <div class="card">
+                    <div class="corner-bl"></div>
+                    <div class="corner-br"></div>
+                    <div class="card-header">
+                        <h3 class="card-title">LED_CONTROL</h3>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">SOLID_COLOR</label>
+                        <div class="button-group">
+                            <input type="color" class="color-input" id="colorPicker" value="#00d4ff">
+                            <button class="primary" onclick="setLEDColor()">[ APPLY ]</button>
+                            <button onclick="turnOffLEDs()">[ OFF ]</button>
+                        </div>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="control-group">
+                        <label class="control-label">ANIMATIONS</label>
+                        <div class="button-group">
+                            <button onclick="playAnimation('rainbow_chase')">[ RAINBOW ]</button>
+                            <button onclick="playAnimation('breathing')">[ BREATHING ]</button>
+                            <button onclick="playAnimation('flash')">[ FLASH ]</button>
+                        </div>
+                    </div>
+                </div>
 
-
-        <!-- Logs Card -->
-        <div class="card full-width">
-            <div class="corner-bl"></div>
-            <div class="corner-br"></div>
-            <div class="card-header">
-                <h3 class="card-title">SYSTEM_LOGS</h3>
-                <div class="button-group">
-                    <button onclick="refreshLogs()">[ REFRESH ]</button>
-                    <button onclick="exportLogs()">[ EXPORT ]</button>
+                <!-- Relay Control Card -->
+                <div class="card">
+                    <div class="corner-bl"></div>
+                    <div class="corner-br"></div>
+                    <div class="card-header">
+                        <h3 class="card-title">RELAY_CONTROL</h3>
+                        <button class="primary" onclick="testAllRelays()">[ TEST_ALL ]</button>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">PIN</label>
+                        <input type="password" id="pinInput" maxlength="4" placeholder="****" style="max-width: 120px;">
+                    </div>
+                    <div class="relay-grid" id="relayGrid">
+                        <!-- Relay buttons generated by JS -->
+                    </div>
                 </div>
             </div>
-            <div class="logs-container" id="logsContainer">
-                <div class="log-entry">
-                    <span class="timestamp">LOADING...</span>
+        </div>
+
+        <!-- SYSTEM TAB -->
+        <div id="tab-system" class="tab-content">
+            <!-- QR Code Management Card -->
+            <div class="card">
+                <div class="corner-bl"></div>
+                <div class="corner-br"></div>
+                <div class="card-header">
+                    <h3 class="card-title">QR_CODE_MANAGEMENT</h3>
+                    <button class="primary" onclick="loadQRURLs()">[ REFRESH ]</button>
+                </div>
+
+                <!-- Current QR URLs -->
+                <div class="control-group">
+                    <label class="control-label">CURRENT_BASE_URL</label>
+                    <div class="button-group">
+                        <input type="text" id="qrBaseUrl" readonly style="flex: 1;">
+                        <button onclick="copyToClipboard(document.getElementById('qrBaseUrl').value)">[ COPY ]</button>
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <!-- Update QR URLs -->
+                <div class="control-group">
+                    <label class="control-label">NEW_BASE_URL</label>
+                    <input type="text" id="newQrBaseUrl" placeholder="https://example.com/purchase">
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">LEVEL_SPECIFIC_URLS</label>
+                    <div class="level-url-grid" id="levelUrlsGrid" style="display: none;">
+                        <!-- Generated by JavaScript -->
+                    </div>
+                    <button onclick="toggleLevelURLs()">[ <span id="levelUrlsToggle">SHOW_LEVEL_URLS</span> ]</button>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">PIN</label>
+                    <input type="password" id="qrUpdatePin" placeholder="****" style="max-width: 120px;">
+                </div>
+
+                <div class="button-group">
+                    <button class="primary" onclick="updateQRURLs()">[ UPDATE_URLS ]</button>
+                    <button onclick="regenerateQRCodes()">[ REGENERATE_QR ]</button>
+                </div>
+
+                <div class="divider"></div>
+
+                <!-- QR Code Preview -->
+                <div class="control-group">
+                    <label class="control-label">QR_CODE_PREVIEW</label>
+                    <div class="qr-preview-grid" id="qrPreviewGrid">
+                        <!-- Generated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LOGS TAB -->
+        <div id="tab-logs" class="tab-content">
+            <div class="card">
+                <div class="corner-bl"></div>
+                <div class="corner-br"></div>
+                <div class="card-header">
+                    <h3 class="card-title">SYSTEM_LOGS</h3>
+                    <div class="button-group">
+                        <button onclick="refreshLogs()">[ REFRESH ]</button>
+                        <button onclick="exportLogs()">[ EXPORT ]</button>
+                    </div>
+                </div>
+                <div class="logs-container" id="logsContainer">
+                    <div class="log-entry">
+                        <span class="timestamp">LOADING...</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -774,12 +827,39 @@
         let ws = null;
         let relayStates = {};
 
+        // Tab switching function
+        function switchTab(tabName) {
+            // Hide all tab contents
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(content => content.classList.remove('active'));
+
+            // Remove active class from all tab buttons
+            const tabButtons = document.querySelectorAll('.tab-button');
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+
+            // Show selected tab content
+            const selectedTab = document.getElementById(`tab-${tabName}`);
+            if (selectedTab) {
+                selectedTab.classList.add('active');
+            }
+
+            // Activate selected tab button
+            const selectedButton = Array.from(tabButtons).find(btn =>
+                btn.textContent.includes(tabName.toUpperCase())
+            );
+            if (selectedButton) {
+                selectedButton.classList.add('active');
+            }
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             generateRelayButtons();
             connectWebSocket();
             refreshStatus();
             refreshLogs();
+            // Initialize first tab as active
+            switchTab('overview');
         });
 
         // Generate relay buttons
@@ -1210,12 +1290,12 @@
             const grid = document.getElementById('levelUrlsGrid');
             const toggle = document.getElementById('levelUrlsToggle');
 
-            if (grid.classList.contains('show')) {
-                grid.classList.remove('show');
-                toggle.textContent = 'Show Level URLs';
+            if (grid.style.display === 'none' || !grid.style.display) {
+                grid.style.display = 'grid';
+                toggle.textContent = 'HIDE_LEVEL_URLS';
             } else {
-                grid.classList.add('show');
-                toggle.textContent = 'Hide Level URLs';
+                grid.style.display = 'none';
+                toggle.textContent = 'SHOW_LEVEL_URLS';
 
                 // Generate level URL inputs if not already done
                 if (grid.children.length === 0) {
