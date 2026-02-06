@@ -18,7 +18,6 @@ from kivy.uix.boxlayout import BoxLayout
 from kivymd.uix.button import MDRaisedButton
 from kivymd.uix.label import MDLabel
 from kivymd.uix.dialog import MDDialog
-from kivymd.uix.colorpicker import MDColorPicker
 
 from monitoni.ui.debug_screens.base import BaseDebugSubScreen
 from monitoni.ui.debug_screens.widgets import (
@@ -208,15 +207,29 @@ class LEDSettingsScreen(BaseDebugSubScreen):
 
         color_card.add_content(color_row2)
 
-        # Custom color picker button
-        custom_color_btn = MDRaisedButton(
-            text="Eigene Farbe",
+        # Row 3: Magenta, Cyan, Orange
+        color_row3 = BoxLayout(
+            orientation='horizontal',
             size_hint_y=None,
             height="60dp",
-            md_bg_color=CORAL_ACCENT,
-            on_release=lambda x: self._open_color_picker()
+            spacing="10dp"
         )
-        color_card.add_content(custom_color_btn)
+
+        for color_name, rgb, text_color in [
+            ("Magenta", (255, 0, 255), (1, 1, 1, 1)),
+            ("Cyan", (0, 255, 255), (0, 0, 0, 1)),
+            ("Orange", (255, 128, 0), (0, 0, 0, 1))
+        ]:
+            btn = MDRaisedButton(
+                text=color_name,
+                size_hint=(1, 1),
+                md_bg_color=(rgb[0]/255, rgb[1]/255, rgb[2]/255, 1),
+                text_color=text_color,
+                on_release=lambda x, r=rgb[0], g=rgb[1], b=rgb[2]: self._set_color(r, g, b)
+            )
+            color_row3.add_widget(btn)
+
+        color_card.add_content(color_row3)
 
         self.add_content(color_card)
 
@@ -457,26 +470,6 @@ class LEDSettingsScreen(BaseDebugSubScreen):
                 brightness = 0.8
 
             asyncio.create_task(self.hardware.led.set_color(r, g, b, brightness))
-
-    def _open_color_picker(self):
-        """Open Kivy color picker for custom color selection."""
-        def on_select_color(instance_color_picker):
-            """Handle color selection from picker."""
-            # MDColorPicker returns color as (r, g, b, a) with values 0-1
-            color = instance_color_picker.get_rgb()
-            r = int(color[0] * 255)
-            g = int(color[1] * 255)
-            b = int(color[2] * 255)
-
-            # Apply to LEDs immediately
-            self._set_color(r, g, b)
-
-        color_picker = MDColorPicker(size_hint=(0.45, 0.85))
-        color_picker.open()
-        color_picker.bind(
-            on_select_color=on_select_color,
-            on_release=lambda x: color_picker.dismiss()
-        )
 
     def _test_zone(self, level: int):
         """Test a specific zone by lighting it up in green for 2 seconds."""
