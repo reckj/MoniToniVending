@@ -172,7 +172,7 @@ class SystemConfig(BaseModel):
     version: str = "1.0.0"
     machine_id: str = "VM001"
     maintenance_mode: bool = False
-    maintenance_message: str = "Maschine wird gewartet"
+    maintenance_message: str = "Machine under maintenance"
 
 
 class Config(BaseModel):

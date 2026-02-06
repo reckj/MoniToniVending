@@ -341,7 +341,7 @@ class DebugScreen(Screen):
             'network': (NetworkSettingsScreen, "Netzwerk"),
             'stats': (StatsSettingsScreen, "Statistik & Logs"),
             'qr_management': (QRManagementScreen, "QR Codes"),
-            'maintenance': (MaintenanceScreen, "Wartung & Status"),
+            'maintenance': (MaintenanceScreen, "Maintenance & Status"),
         }
 
         for screen_name, (screen_class, title) in sub_screen_classes.items():

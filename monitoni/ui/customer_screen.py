@@ -592,11 +592,13 @@ class CustomerScreen(Screen):
         level = button.level
 
         # Check maintenance mode first
-        config_mgr = get_config_manager()
-        if hasattr(config_mgr.config, 'system') and hasattr(config_mgr.config.system, 'maintenance_mode'):
+        try:
+            config_mgr = get_config_manager()
             if config_mgr.config.system.maintenance_mode:
-                self.set_status("Maschine wird gewartet", (1, 0.5, 0, 1))  # Orange
+                self.set_status("Machine under maintenance", (1, 0.3, 0, 1))
                 return
+        except Exception:
+            pass
 
         # Only allow selection in idle state
         if not self.state_machine.is_idle():

@@ -29,8 +29,8 @@ class DebugMenuScreen(Screen):
         ('motor', 'engine', 'Motor Settings', 'Timings, delays, test functions'),
         ('network', 'server-network', 'Network/Server', 'Endpoints, connection status'),
         ('stats', 'chart-bar', 'Statistics & Logs', 'View stats, export logs'),
-        ('qr_management', 'qrcode', 'QR Codes', 'QR Codes generieren, hochladen, verwalten'),
-        ('maintenance', 'wrench', 'Wartung & Status', 'Wartungsmodus, Maschinenstatus'),
+        ('qr_management', 'qrcode', 'QR Codes', 'Generate, upload, manage QR codes'),
+        ('maintenance', 'wrench', 'Maintenance & Status', 'Maintenance mode, machine status'),
     ]
 
     def __init__(self, navigate_callback=None, back_to_customer_callback=None, **kwargs):
