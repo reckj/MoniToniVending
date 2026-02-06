@@ -7,10 +7,10 @@
 
 ## Current Position
 
-- **Phase:** 2 of 5 - Settings Sub-screens
-- **Plan:** 4 of 5 - Just completed 02-03-PLAN.md
+- **Phase:** 4 of 5 - Maintenance Features
+- **Plan:** 1 of 3 - Just completed 04-01-PLAN.md
 - **Status:** In progress
-- **Last activity:** 2026-02-06 - Completed 02-03-PLAN.md (LED and Sensor Settings)
+- **Last activity:** 2026-02-06 - Completed 04-01-PLAN.md (QR Code Management)
 
 ## Progress
 
@@ -18,16 +18,20 @@
 Phase 1: Debug Screen Architecture  [==========] Complete ✓
 Phase 2: Settings Sub-screens       [========  ] 4/5 plans (80%)
 Phase 3: Setup Wizard               [          ] Not Started
-Phase 4: Maintenance Features       [          ] Not Started
+Phase 4: Maintenance Features       [===       ] 1/3 plans (33%)
 Phase 5: UI Polish & Hardware Test  [          ] Not Started
 
-Overall: [======....] ~50%
+Overall: [======....] ~52%
 ```
 
 ## Recent Decisions
 
 | Decision | Date | Phase-Plan |
 |----------|------|------------|
+| NumpadDialog over NumpadField for transient level selection | 2026-02-06 | 04-01 |
+| ERROR_CORRECT_M (15%) for QR code generation | 2026-02-06 | 04-01 |
+| Image reload via source clearing and Clock.schedule_once | 2026-02-06 | 04-01 |
+| Custom QR precedence pattern (custom_level_N.png > level_N.png) | 2026-02-06 | 04-01 |
 | Clock.schedule_interval for 200ms sensor polling (need sync callback) | 2026-02-06 | 02-03 |
 | LED brightness stored in led.animations.idle.brightness path | 2026-02-06 | 02-03 |
 | Zone mapping uses direct pixel range (start/end) editable per-level | 2026-02-06 | 02-03 |
@@ -61,7 +65,7 @@ None identified.
 
 ## Session Continuity
 
-Last session: 2026-02-06 14:54
-Stopped at: Completed 02-03-PLAN.md (LED and Sensor Settings)
+Last session: 2026-02-06 19:00
+Stopped at: Completed 04-01-PLAN.md (QR Code Management)
 Resume file: None
-Next: Execute 02-05-PLAN.md (final settings screen)
+Next: Continue with Phase 04 maintenance features
