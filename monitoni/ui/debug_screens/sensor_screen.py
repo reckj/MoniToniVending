@@ -65,7 +65,7 @@ class SensorSettingsScreen(BaseDebugSubScreen):
         self._update_event = None
 
         super().__init__(navigate_back=navigate_back, **kwargs)
-        self.title = "Sensoren"
+        self.title = "Sensors"
 
         self._build_content()
 
@@ -78,11 +78,11 @@ class SensorSettingsScreen(BaseDebugSubScreen):
     def _build_content(self):
         """Build the sensor settings screen content."""
         # Card 1: GPIO Configuration
-        gpio_card = SettingsCard(title="GPIO-Konfiguration")
+        gpio_card = SettingsCard(title="GPIO Configuration")
 
         # Sensor pin (BCM)
         pin_field = NumpadField(
-            label="Sensor-Pin (BCM)",
+            label="Sensor Pin (BCM)",
             config_path="hardware.gpio.door_sensor_pin",
             config_manager=self.config_manager,
             allow_decimal=False,
@@ -100,7 +100,7 @@ class SensorSettingsScreen(BaseDebugSubScreen):
         )
 
         pull_label = MDLabel(
-            text="Pull-Modus",
+            text="Pull Mode",
             size_hint_x=0.4,
             font_style='Body1'
         )
@@ -138,7 +138,7 @@ class SensorSettingsScreen(BaseDebugSubScreen):
         )
 
         active_label = MDLabel(
-            text="Aktiv-Zustand",
+            text="Active State",
             size_hint_x=0.4,
             font_style='Body1'
         )
@@ -176,7 +176,7 @@ class SensorSettingsScreen(BaseDebugSubScreen):
         )
 
         enabled_label = MDLabel(
-            text="Sensor aktiviert",
+            text="Sensor Enabled",
             size_hint_x=0.7,
             font_style='Body1'
         )
@@ -186,7 +186,7 @@ class SensorSettingsScreen(BaseDebugSubScreen):
         current_enabled = self.config_manager.config.hardware.gpio.enabled
 
         self.enabled_btn = MDRaisedButton(
-            text="AN" if current_enabled else "AUS",
+            text="ON" if current_enabled else "OFF",
             size_hint_x=0.3,
             md_bg_color=CORAL_ACCENT if current_enabled else (0.5, 0.5, 0.5, 1),
             on_release=lambda x: self._toggle_enabled()
@@ -198,7 +198,7 @@ class SensorSettingsScreen(BaseDebugSubScreen):
         self.add_content(gpio_card)
 
         # Card 2: Live Door Status (PROMINENT)
-        status_card = SettingsCard(title="Live Tür-Status")
+        status_card = SettingsCard(title="Live Door Status")
 
         # Large status display
         self.door_status_container = BoxLayout(
@@ -211,7 +211,7 @@ class SensorSettingsScreen(BaseDebugSubScreen):
 
         # Status label (very large)
         self.door_status_label = MDLabel(
-            text="TÜR: CHECKING...",
+            text="DOOR: CHECKING...",
             font_style='H3',
             halign='center',
             valign='center',
@@ -242,7 +242,7 @@ class SensorSettingsScreen(BaseDebugSubScreen):
         self.add_content(status_card)
 
         # Card 3: Sensor Info
-        info_card = SettingsCard(title="Sensor-Info")
+        info_card = SettingsCard(title="Sensor Info")
 
         # Info container
         self.info_container = BoxLayout(
@@ -261,7 +261,7 @@ class SensorSettingsScreen(BaseDebugSubScreen):
 
         # Reset button
         reset_btn = MDRaisedButton(
-            text="Werkseinstellungen",
+            text="Factory Reset",
             size_hint_y=None,
             height="60dp",
             md_bg_color=(0.6, 0.3, 0.3, 1),
@@ -288,8 +288,8 @@ class SensorSettingsScreen(BaseDebugSubScreen):
 
         # Show confirmation for risky change
         show_confirm_dialog(
-            title="Bestätigung erforderlich",
-            text=f"Möchten Sie den Pull-Modus wirklich auf {mode.upper()} setzen?\n\nDies ist eine hardwarerelevante Einstellung.",
+            title="Confirmation Required",
+            text=f"Set pull mode to {mode.upper()}?\n\nThis is a hardware-relevant setting.",
             on_confirm=confirm_change
         )
 
@@ -312,8 +312,8 @@ class SensorSettingsScreen(BaseDebugSubScreen):
 
         # Show confirmation for risky change
         show_confirm_dialog(
-            title="Bestätigung erforderlich",
-            text=f"Möchten Sie den Aktiv-Zustand wirklich auf {state.upper()} setzen?\n\nDies ist eine hardwarerelevante Einstellung.",
+            title="Confirmation Required",
+            text=f"Set active state to {state.upper()}?\n\nThis is a hardware-relevant setting.",
             on_confirm=confirm_change
         )
 
@@ -330,7 +330,7 @@ class SensorSettingsScreen(BaseDebugSubScreen):
         )
 
         # Update button
-        self.enabled_btn.text = "AN" if new_enabled else "AUS"
+        self.enabled_btn.text = "ON" if new_enabled else "OFF"
         self.enabled_btn.md_bg_color = CORAL_ACCENT if new_enabled else (0.5, 0.5, 0.5, 1)
 
         # Update sensor info
@@ -364,7 +364,7 @@ class SensorSettingsScreen(BaseDebugSubScreen):
 
         # Active state
         active_label = MDLabel(
-            text=f"Aktiv: {config.door_sensor_active.upper()}",
+            text=f"Active: {config.door_sensor_active.upper()}",
             size_hint_y=None,
             height="30dp",
             font_style='Body2'
@@ -373,10 +373,10 @@ class SensorSettingsScreen(BaseDebugSubScreen):
 
         # Connection status
         if self.hardware.sensor and self.hardware.sensor.is_connected():
-            status_text = "Status: Verbunden"
+            status_text = "Status: Connected"
             status_color = (0, 1, 0, 1)
         else:
-            status_text = "Status: Nicht verbunden"
+            status_text = "Status: Not connected"
             status_color = (1, 0, 0, 1)
 
         status_label = MDLabel(
@@ -416,22 +416,22 @@ class SensorSettingsScreen(BaseDebugSubScreen):
         """Update door status display."""
         if disconnected:
             # Sensor not connected
-            self.door_status_label.text = "NICHT VERBUNDEN"
+            self.door_status_label.text = "NOT CONNECTED"
             self.door_status_label.text_color = (0.5, 0.5, 0.5, 1)
             self.door_status_bg_color.rgba = (0.2, 0.2, 0.2, 1)
         elif error or state is None:
             # Error reading sensor
-            self.door_status_label.text = "FEHLER"
+            self.door_status_label.text = "ERROR"
             self.door_status_label.text_color = (1, 0, 0, 1)
             self.door_status_bg_color.rgba = (0.3, 0.1, 0.1, 1)
         elif state:
             # Door open
-            self.door_status_label.text = "TÜR: OFFEN"
+            self.door_status_label.text = "DOOR: OPEN"
             self.door_status_label.text_color = CORAL_ACCENT
             self.door_status_bg_color.rgba = (0.3, 0.15, 0.15, 1)
         else:
             # Door closed
-            self.door_status_label.text = "TÜR: GESCHLOSSEN"
+            self.door_status_label.text = "DOOR: CLOSED"
             self.door_status_label.text_color = (0, 1, 0, 1)
             self.door_status_bg_color.rgba = (0.1, 0.25, 0.1, 1)
 
@@ -447,16 +447,16 @@ class SensorSettingsScreen(BaseDebugSubScreen):
                 self._show_reset_error()
 
         show_confirm_dialog(
-            title="Werkseinstellungen wiederherstellen",
-            text="Möchten Sie wirklich alle Sensor-Einstellungen auf Werkseinstellungen zurücksetzen?\n\nDies betrifft:\n- GPIO-Pin\n- Pull-Modus\n- Aktiv-Zustand",
+            title="Restore Factory Settings",
+            text="Reset all sensor settings to factory defaults?\n\nThis affects:\n- GPIO pin\n- Pull mode\n- Active state",
             on_confirm=confirm_reset
         )
 
     def _show_reset_success(self):
         """Show success message after reset."""
         dialog = MDDialog(
-            title="Erfolgreich",
-            text="Sensor-Einstellungen wurden zurückgesetzt.\n\nBitte kehren Sie zum Menü zurück und öffnen Sie diesen Bildschirm erneut, um die neuen Werte anzuzeigen.",
+            title="Success",
+            text="Sensor settings have been reset.\n\nPlease return to menu and reopen this screen to see new values.",
             buttons=[
                 MDRaisedButton(
                     text="OK",
@@ -470,8 +470,8 @@ class SensorSettingsScreen(BaseDebugSubScreen):
     def _show_reset_error(self):
         """Show error message if reset failed."""
         dialog = MDDialog(
-            title="Fehler",
-            text="Fehler beim Zurücksetzen der Einstellungen.",
+            title="Error",
+            text="Error resetting settings.",
             buttons=[
                 MDRaisedButton(
                     text="OK",

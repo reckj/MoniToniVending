@@ -17,6 +17,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import yaml
 from kivy.clock import Clock
+from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 from kivymd.uix.button import MDRaisedButton, MDFlatButton
@@ -30,6 +31,7 @@ from monitoni.core.config import ConfigManager
 # Color constants
 CORAL_ACCENT = (242/255, 64/255, 51/255, 1)  # #F24033
 NEAR_BLACK = (0.12, 0.12, 0.12, 1)  # #1F1F1F equivalent
+INPUT_BUTTON = (0.28, 0.28, 0.28, 1)  # Brighter than NEAR_BLACK for input fields
 ERROR_RED = (1, 0, 0, 1)
 
 
@@ -117,9 +119,11 @@ class NumpadDialog:
                 # Empty placeholder
                 numpad_grid.add_widget(BoxLayout())
             else:
+                # Backspace button in red, others in dark gray
+                bg_color = ERROR_RED if btn_text == '⌫' else NEAR_BLACK
                 btn = MDRaisedButton(
                     text=btn_text,
-                    md_bg_color=NEAR_BLACK,
+                    md_bg_color=bg_color,
                     size_hint=(1, 1),
                     on_release=lambda x, text=btn_text: self._on_key_press(text)
                 )
@@ -134,7 +138,7 @@ class NumpadDialog:
             content_cls=content,
             buttons=[
                 MDFlatButton(
-                    text="ABBRECHEN",
+                    text="CANCEL",
                     on_release=lambda x: self.dialog.dismiss()
                 ),
                 MDRaisedButton(
@@ -247,7 +251,8 @@ class SettingsCard(MDCard):
         self.add_widget(root)
 
         # Auto-update card height when content changes
-        root.bind(minimum_height=lambda *args: setattr(self, 'height', root.minimum_height))
+        # Add 2x padding (top + bottom = 30dp) so title doesn't overlap borders
+        root.bind(minimum_height=lambda *args: setattr(self, 'height', root.minimum_height + dp(30)))
 
     def add_content(self, widget):
         """
@@ -387,7 +392,7 @@ def show_confirm_dialog(
     on_confirm: Optional[Callable[[], None]] = None
 ) -> MDDialog:
     """
-    Show a confirmation dialog with German labels.
+    Show a confirmation dialog.
 
     Args:
         title: Dialog title
@@ -407,7 +412,7 @@ def show_confirm_dialog(
         text=text,
         buttons=[
             MDFlatButton(
-                text="ABBRECHEN",
+                text="CANCEL",
                 on_release=lambda x: dialog.dismiss()
             ),
             MDRaisedButton(
@@ -581,8 +586,8 @@ class LiveStatusCard(MDCard):
 
         self.add_widget(root)
 
-        # Auto-update card height
-        root.bind(minimum_height=lambda *args: setattr(self, 'height', root.minimum_height))
+        # Auto-update card height (add 2x padding for top + bottom)
+        root.bind(minimum_height=lambda *args: setattr(self, 'height', root.minimum_height + dp(30)))
 
     def _update_status(self):
         """Update status display by calling the callback."""
@@ -723,6 +728,12 @@ class NumpadField(BoxLayout):
 
         return float(current) if current is not None else 0.0
 
+    def _format_value(self, value: float) -> str:
+        """Format value for display (int if no decimals allowed)."""
+        if not self.allow_decimal and value == int(value):
+            return str(int(value))
+        return str(value)
+
     def _build_ui(self):
         """Build the field UI."""
         # Label on left
@@ -733,11 +744,11 @@ class NumpadField(BoxLayout):
         )
         self.add_widget(label_widget)
 
-        # Tappable value display on right
+        # Tappable value display on right (brighter for visibility)
         self.value_button = MDRaisedButton(
-            text=str(self.current_value),
+            text=self._format_value(self.current_value),
             size_hint_x=0.4,
-            md_bg_color=NEAR_BLACK,
+            md_bg_color=INPUT_BUTTON,
             on_release=lambda x: self._open_numpad()
         )
         self.add_widget(self.value_button)
@@ -767,8 +778,8 @@ class NumpadField(BoxLayout):
             if needs_confirmation:
                 # Show confirmation dialog for risky paths
                 show_confirm_dialog(
-                    title="Bestätigung erforderlich",
-                    text=f"Möchten Sie {self.label} wirklich auf {new_value} setzen?\n\nDies ist eine hardwarerelevante Einstellung.",
+                    title="Confirmation Required",
+                    text=f"Set {self.label} to {self._format_value(new_value)}?\n\nThis is a hardware-relevant setting.",
                     on_confirm=lambda: self._apply_value(new_value)
                 )
             else:
@@ -780,7 +791,7 @@ class NumpadField(BoxLayout):
     def _apply_value(self, new_value: float):
         """Apply the new value and update display."""
         self.current_value = new_value
-        self.value_button.text = str(new_value)
+        self.value_button.text = self._format_value(new_value)
 
         # Invoke callback if provided
         if self.on_value_changed:
@@ -841,7 +852,7 @@ class TextInputDialog:
             content_cls=self.text_field,
             buttons=[
                 MDFlatButton(
-                    text="ABBRECHEN",
+                    text="CANCEL",
                     on_release=lambda x: self.dialog.dismiss()
                 ),
                 MDRaisedButton(

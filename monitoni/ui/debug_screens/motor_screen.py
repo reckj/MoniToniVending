@@ -53,7 +53,7 @@ class MotorSettingsScreen(BaseDebugSubScreen):
         """
         self.hardware = hardware
         self.config_manager = config_manager
-        self.title = "Motor-Einstellungen"
+        self.title = "Motor Settings"
 
         # Motor test state tracking
         self._motor_test_running = False
@@ -82,11 +82,11 @@ class MotorSettingsScreen(BaseDebugSubScreen):
 
     def _build_motor_config_card(self):
         """Build motor configuration card."""
-        card = SettingsCard("Motor-Konfiguration")
+        card = SettingsCard("Motor Configuration")
 
         # Motor relay channel
         motor_channel_field = NumpadField(
-            label="Motor Relay-Kanal",
+            label="Motor Relay Channel",
             config_path="vending.motor.relay_channel",
             config_manager=self.config_manager,
             allow_decimal=False,
@@ -98,7 +98,7 @@ class MotorSettingsScreen(BaseDebugSubScreen):
 
         # Spindle lock relay
         spindle_channel_field = NumpadField(
-            label="Spindel-Schloss Relay",
+            label="Spindle Lock Relay",
             config_path="vending.motor.spindle_lock_relay",
             config_manager=self.config_manager,
             allow_decimal=False,
@@ -110,7 +110,7 @@ class MotorSettingsScreen(BaseDebugSubScreen):
 
         # Spin delay
         spin_delay_field = NumpadField(
-            label="Drehzeit (ms)",
+            label="Spin Time (ms)",
             config_path="vending.motor.spin_delay_ms",
             config_manager=self.config_manager,
             allow_decimal=False,
@@ -122,7 +122,7 @@ class MotorSettingsScreen(BaseDebugSubScreen):
 
         # Spindle pre-delay
         pre_delay_field = NumpadField(
-            label="Spindel Vorlaufzeit (ms)",
+            label="Spindle Pre-Delay (ms)",
             config_path="vending.motor.spindle_pre_delay_ms",
             config_manager=self.config_manager,
             allow_decimal=False,
@@ -134,7 +134,7 @@ class MotorSettingsScreen(BaseDebugSubScreen):
 
         # Spindle post-delay
         post_delay_field = NumpadField(
-            label="Spindel Nachlaufzeit (ms)",
+            label="Spindle Post-Delay (ms)",
             config_path="vending.motor.spindle_post_delay_ms",
             config_manager=self.config_manager,
             allow_decimal=False,
@@ -148,11 +148,11 @@ class MotorSettingsScreen(BaseDebugSubScreen):
 
     def _build_motor_test_card(self):
         """Build motor testing card."""
-        card = SettingsCard("Motor-Test")
+        card = SettingsCard("Motor Test")
 
         # Full motor test with spindle sequence
         full_test_btn = HoldButton(
-            text="Motor testen",
+            text="Test Motor",
             on_hold=self._start_motor_test,
             on_release_hold=self._stop_motor_test
         )
@@ -173,7 +173,7 @@ class MotorSettingsScreen(BaseDebugSubScreen):
 
         # Spindle lock test
         spindle_test_btn = HoldButton(
-            text="Spindel-Schloss testen",
+            text="Test Spindle Lock",
             on_hold=self._activate_spindle,
             on_release_hold=self._deactivate_spindle
         )
@@ -181,7 +181,7 @@ class MotorSettingsScreen(BaseDebugSubScreen):
 
         # Motor direct test
         motor_direct_test_btn = HoldButton(
-            text="Motor direkt testen",
+            text="Test Motor Direct",
             on_hold=self._activate_motor,
             on_release_hold=self._deactivate_motor
         )
@@ -192,7 +192,7 @@ class MotorSettingsScreen(BaseDebugSubScreen):
 
     def _build_timing_visualization_card(self):
         """Build timing sequence visualization card."""
-        card = SettingsCard("Timing-Visualisierung")
+        card = SettingsCard("Timing Visualization")
 
         # Timing sequence display
         self.timing_label = MDLabel(
@@ -213,13 +213,13 @@ class MotorSettingsScreen(BaseDebugSubScreen):
         pre_delay = config.spindle_pre_delay_ms
         post_delay = config.spindle_post_delay_ms
 
-        return f"""Sequenz:
-1. Spindel öffnen (Relay {config.spindle_lock_relay})
-2. Warte {pre_delay}ms
-3. Motor AN (Relay {config.relay_channel}) - solange gehalten
-4. Motor AUS
-5. Warte {post_delay}ms
-6. Spindel schließen"""
+        return f"""Sequence:
+1. Open spindle (Relay {config.spindle_lock_relay})
+2. Wait {pre_delay}ms
+3. Motor ON (Relay {config.relay_channel}) - while held
+4. Motor OFF
+5. Wait {post_delay}ms
+6. Close spindle"""
 
     def _update_timing_visualization(self):
         """Update timing visualization text."""
@@ -228,18 +228,18 @@ class MotorSettingsScreen(BaseDebugSubScreen):
 
     def _build_status_card(self):
         """Build live motor and spindle status card."""
-        def get_motor_status() -> List[Tuple[str, str, Tuple[float, float, float, float]]]:
-            """Get status of motor and spindle relays."""
+        async def get_motor_status() -> List[Tuple[str, str, Tuple[float, float, float, float]]]:
+            """Get status of motor and spindle relays (async)."""
             if not self.hardware.relay:
-                return [("Motor", "Relay nicht verbunden", (1, 0, 0, 1))]
+                return [("Motor", "Relay not connected", (1, 0, 0, 1))]
 
             status_items = []
             config = self.config_manager.config.vending.motor
 
             # Motor relay
             try:
-                motor_state = asyncio.run(self.hardware.relay.get_relay(config.relay_channel))
-                state_text = "AN" if motor_state else "AUS"
+                motor_state = await self.hardware.relay.get_relay(config.relay_channel)
+                state_text = "ON" if motor_state else "OFF"
                 color = (0, 1, 0, 1) if motor_state else (0.5, 0.5, 0.5, 1)
                 status_items.append((f"Motor (R{config.relay_channel})", state_text, color))
             except Exception:
@@ -247,17 +247,17 @@ class MotorSettingsScreen(BaseDebugSubScreen):
 
             # Spindle lock relay
             try:
-                spindle_state = asyncio.run(self.hardware.relay.get_relay(config.spindle_lock_relay))
-                state_text = "AN" if spindle_state else "AUS"
+                spindle_state = await self.hardware.relay.get_relay(config.spindle_lock_relay)
+                state_text = "ON" if spindle_state else "OFF"
                 color = (0, 1, 0, 1) if spindle_state else (0.5, 0.5, 0.5, 1)
-                status_items.append((f"Spindel (R{config.spindle_lock_relay})", state_text, color))
+                status_items.append((f"Spindle (R{config.spindle_lock_relay})", state_text, color))
             except Exception:
-                status_items.append((f"Spindel (R{config.spindle_lock_relay})", "ERROR", (1, 0, 0, 1)))
+                status_items.append((f"Spindle (R{config.spindle_lock_relay})", "ERROR", (1, 0, 0, 1)))
 
             return status_items
 
         status_card = LiveStatusCard(
-            title="Motor-Status",
+            title="Motor Status",
             get_status_callback=get_motor_status,
             update_interval=0.5
         )
@@ -266,7 +266,7 @@ class MotorSettingsScreen(BaseDebugSubScreen):
     def _build_reset_button(self):
         """Build reset to defaults button."""
         reset_btn = MDRaisedButton(
-            text="Werkseinstellungen",
+            text="Factory Reset",
             size_hint=(1, None),
             height="60dp",
             md_bg_color=CORAL_ACCENT,
@@ -281,8 +281,8 @@ class MotorSettingsScreen(BaseDebugSubScreen):
             self._update_timing_visualization()
 
         show_confirm_dialog(
-            title="Werkseinstellungen",
-            text="Motor-Einstellungen zurücksetzen?",
+            title="Factory Reset",
+            text="Reset motor settings to defaults?",
             on_confirm=do_reset
         )
 

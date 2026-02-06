@@ -16,7 +16,7 @@ from kivymd.uix.label import MDLabel
 from monitoni.ui.debug_screens.base import BaseDebugSubScreen
 from monitoni.ui.debug_screens.widgets import (
     SettingsCard, HoldButton, NumpadField, LiveStatusCard,
-    show_confirm_dialog, reset_section_to_defaults, CORAL_ACCENT
+    show_confirm_dialog, reset_section_to_defaults, CORAL_ACCENT, INPUT_BUTTON
 )
 from monitoni.core.config import ConfigManager
 from monitoni.hardware.manager import HardwareManager
@@ -53,7 +53,7 @@ class RelaySettingsScreen(BaseDebugSubScreen):
         """
         self.hardware = hardware
         self.config_manager = config_manager
-        self.title = "Relay-Steuerung"
+        self.title = "Relay Control"
 
         # Cascade test state
         self._cascade_task = None
@@ -81,7 +81,7 @@ class RelaySettingsScreen(BaseDebugSubScreen):
 
     def _build_modbus_card(self):
         """Build Modbus connection settings card."""
-        card = SettingsCard("Modbus-Verbindung")
+        card = SettingsCard("Modbus Connection")
 
         # Port (string field - tappable label showing current value)
         port_row = BoxLayout(
@@ -101,7 +101,7 @@ class RelaySettingsScreen(BaseDebugSubScreen):
         self.port_button = MDRaisedButton(
             text=current_port,
             size_hint_x=0.4,
-            md_bg_color=(0.12, 0.12, 0.12, 1),
+            md_bg_color=INPUT_BUTTON,
             on_release=lambda x: self._edit_port()
         )
         port_row.add_widget(self.port_button)
@@ -120,7 +120,7 @@ class RelaySettingsScreen(BaseDebugSubScreen):
 
         # Slave Address
         slave_field = NumpadField(
-            label="Slave-Adresse",
+            label="Slave Address",
             config_path="hardware.modbus.slave_address",
             config_manager=self.config_manager,
             allow_decimal=False,
@@ -149,17 +149,17 @@ class RelaySettingsScreen(BaseDebugSubScreen):
         current_port = self.config_manager.config.hardware.modbus.port
         show_confirm_dialog(
             title="Modbus Port",
-            text=f"Aktueller Port: {current_port}\n\nPort-Änderung erfordert Neustart.",
+            text=f"Current port: {current_port}\n\nChanging port requires restart.",
             on_confirm=None
         )
 
     def _build_relay_test_card(self):
         """Build relay testing card with cascade and individual buttons."""
-        card = SettingsCard("Relay-Test")
+        card = SettingsCard("Relay Test")
 
         # Cascade test button (full width, prominent)
         cascade_btn = HoldButton(
-            text="Alle testen (Kaskade)",
+            text="Test All (Cascade)",
             on_hold=self._start_cascade_test,
             on_release_hold=self._stop_cascade_test
         )
@@ -188,7 +188,7 @@ class RelaySettingsScreen(BaseDebugSubScreen):
 
     def _build_door_lock_card(self):
         """Build door lock mapping card."""
-        card = SettingsCard("Tür-Schloss Zuordnung")
+        card = SettingsCard("Door Lock Mapping")
 
         # Get current relay channels list
         levels = self.config_manager.config.vending.levels
@@ -208,7 +208,7 @@ class RelaySettingsScreen(BaseDebugSubScreen):
             )
 
             label = MDLabel(
-                text=f"Fach {level}:",
+                text=f"Level {level}:",
                 size_hint_x=0.6,
                 font_style='Body1'
             )
@@ -218,7 +218,7 @@ class RelaySettingsScreen(BaseDebugSubScreen):
             btn = MDRaisedButton(
                 text=str(current_channel),
                 size_hint_x=0.4,
-                md_bg_color=(0.12, 0.12, 0.12, 1),
+                md_bg_color=INPUT_BUTTON,
                 on_release=lambda x, lv=level, btn_ref=None: self._edit_door_lock_channel(lv, btn_ref or x)
             )
             # Store button reference for updating after edit
@@ -229,7 +229,7 @@ class RelaySettingsScreen(BaseDebugSubScreen):
 
         # Unlock duration field
         unlock_duration_field = NumpadField(
-            label="Entsperr-Dauer (s)",
+            label="Unlock Duration (s)",
             config_path="vending.door_lock.unlock_duration_s",
             config_manager=self.config_manager,
             allow_decimal=False,
@@ -267,14 +267,14 @@ class RelaySettingsScreen(BaseDebugSubScreen):
 
             # Show confirmation (risky change)
             show_confirm_dialog(
-                title="Bestätigung erforderlich",
-                text=f"Möchten Sie Fach {level} wirklich auf Relay {int(new_value)} setzen?\n\nDies ist eine hardwarerelevante Einstellung.",
+                title="Confirmation Required",
+                text=f"Set Level {level} to Relay {int(new_value)}?\n\nThis is a hardware-relevant setting.",
                 on_confirm=lambda: self._apply_door_lock_change(update_dict, button, int(new_value))
             )
 
         # Open numpad
         dialog = NumpadDialog(
-            title=f"Fach {level} Relay-Kanal",
+            title=f"Level {level} Relay Channel",
             initial_value=float(current_value),
             min_value=1,
             max_value=32,
@@ -293,18 +293,18 @@ class RelaySettingsScreen(BaseDebugSubScreen):
 
     def _build_status_card(self):
         """Build live relay status card."""
-        def get_relay_status() -> List[Tuple[str, str, Tuple[float, float, float, float]]]:
-            """Get status of important relays."""
+        async def get_relay_status() -> List[Tuple[str, str, Tuple[float, float, float, float]]]:
+            """Get status of important relays (async)."""
             if not self.hardware.relay:
-                return [("Relay", "Nicht verbunden", (1, 0, 0, 1))]
+                return [("Relay", "Not connected", (1, 0, 0, 1))]
 
             status_items = []
 
             # Motor relay
             motor_ch = self.config_manager.config.vending.motor.relay_channel
             try:
-                motor_state = asyncio.run(self.hardware.relay.get_relay(motor_ch))
-                state_text = "AN" if motor_state else "AUS"
+                motor_state = await self.hardware.relay.get_relay(motor_ch)
+                state_text = "ON" if motor_state else "OFF"
                 color = (0, 1, 0, 1) if motor_state else (0.5, 0.5, 0.5, 1)
                 status_items.append((f"Motor (R{motor_ch})", state_text, color))
             except Exception:
@@ -313,28 +313,28 @@ class RelaySettingsScreen(BaseDebugSubScreen):
             # Spindle lock relay
             spindle_ch = self.config_manager.config.vending.motor.spindle_lock_relay
             try:
-                spindle_state = asyncio.run(self.hardware.relay.get_relay(spindle_ch))
-                state_text = "AN" if spindle_state else "AUS"
+                spindle_state = await self.hardware.relay.get_relay(spindle_ch)
+                state_text = "ON" if spindle_state else "OFF"
                 color = (0, 1, 0, 1) if spindle_state else (0.5, 0.5, 0.5, 1)
-                status_items.append((f"Spindel (R{spindle_ch})", state_text, color))
+                status_items.append((f"Spindle (R{spindle_ch})", state_text, color))
             except Exception:
-                status_items.append((f"Spindel (R{spindle_ch})", "ERROR", (1, 0, 0, 1)))
+                status_items.append((f"Spindle (R{spindle_ch})", "ERROR", (1, 0, 0, 1)))
 
             # First 3 door lock relays (sample)
             door_channels = self.config_manager.config.vending.door_lock.relay_channels[:3]
             for i, ch in enumerate(door_channels):
                 try:
-                    door_state = asyncio.run(self.hardware.relay.get_relay(ch))
-                    state_text = "AN" if door_state else "AUS"
+                    door_state = await self.hardware.relay.get_relay(ch)
+                    state_text = "ON" if door_state else "OFF"
                     color = (0, 1, 0, 1) if door_state else (0.5, 0.5, 0.5, 1)
-                    status_items.append((f"Tür {i+1} (R{ch})", state_text, color))
+                    status_items.append((f"Door {i+1} (R{ch})", state_text, color))
                 except Exception:
-                    status_items.append((f"Tür {i+1} (R{ch})", "ERROR", (1, 0, 0, 1)))
+                    status_items.append((f"Door {i+1} (R{ch})", "ERROR", (1, 0, 0, 1)))
 
             return status_items
 
         status_card = LiveStatusCard(
-            title="Relay-Status",
+            title="Relay Status",
             get_status_callback=get_relay_status,
             update_interval=1.0
         )
@@ -343,7 +343,7 @@ class RelaySettingsScreen(BaseDebugSubScreen):
     def _build_reset_button(self):
         """Build reset to defaults button."""
         reset_btn = MDRaisedButton(
-            text="Werkseinstellungen",
+            text="Factory Reset",
             size_hint=(1, None),
             height="60dp",
             md_bg_color=CORAL_ACCENT,
@@ -360,8 +360,8 @@ class RelaySettingsScreen(BaseDebugSubScreen):
             reset_section_to_defaults(self.config_manager, "vending.door_lock")
 
         show_confirm_dialog(
-            title="Werkseinstellungen",
-            text="Relay-Einstellungen zurücksetzen?\n\nDies setzt Modbus und Tür-Schloss Konfiguration zurück.",
+            title="Factory Reset",
+            text="Reset relay settings?\n\nThis resets Modbus and door lock configuration.",
             on_confirm=do_reset
         )
 

@@ -87,7 +87,7 @@ class AudioSettingsScreen(BaseDebugSubScreen):
 
     def _build_volume_card(self) -> SettingsCard:
         """Build volume control card."""
-        card = SettingsCard(title="Lautstärke")
+        card = SettingsCard(title="Volume")
 
         # Get current volume (stored as 0.0-1.0, display as 0-100%)
         current_volume = self.config_manager.config.hardware.audio.volume
@@ -106,7 +106,7 @@ class AudioSettingsScreen(BaseDebugSubScreen):
 
         # NumpadField for volume adjustment (0-100%)
         volume_field = NumpadField(
-            label="Lautstärke (%)",
+            label="Volume (%)",
             config_path="hardware.audio.volume",
             config_manager=self.config_manager,
             allow_decimal=False,
@@ -128,7 +128,7 @@ class AudioSettingsScreen(BaseDebugSubScreen):
         )
 
         toggle_label = MDLabel(
-            text="Audio aktiviert",
+            text="Audio Enabled",
             size_hint_x=0.7,
             font_style='Body1'
         )
@@ -151,15 +151,15 @@ class AudioSettingsScreen(BaseDebugSubScreen):
 
     def _build_sound_test_card(self) -> SettingsCard:
         """Build sound test buttons card."""
-        card = SettingsCard(title="Sound-Test")
+        card = SettingsCard(title="Sound Test")
 
         # Get configured sounds
         sounds = self.config_manager.config.audio.sounds
 
-        # German display names
+        # Display names
         sound_labels = {
-            'valid_purchase': 'Erfolg',
-            'invalid_purchase': 'Fehler',
+            'valid_purchase': 'Success',
+            'invalid_purchase': 'Error',
             'door_alarm': 'Alarm'
         }
 
@@ -186,7 +186,7 @@ class AudioSettingsScreen(BaseDebugSubScreen):
 
         # Stop all button
         stop_btn = MDRaisedButton(
-            text="Alle stoppen",
+            text="Stop All",
             md_bg_color=CORAL_ACCENT,
             size_hint_y=None,
             height="60dp",
@@ -198,15 +198,15 @@ class AudioSettingsScreen(BaseDebugSubScreen):
 
     def _build_sound_files_card(self) -> SettingsCard:
         """Build sound files status card."""
-        card = SettingsCard(title="Sound-Dateien")
+        card = SettingsCard(title="Sound Files")
 
         # Get configured sounds
         sounds = self.config_manager.config.audio.sounds
 
-        # German display names
+        # Display names
         sound_labels = {
-            'valid_purchase': 'Erfolg',
-            'invalid_purchase': 'Fehler',
+            'valid_purchase': 'Success',
+            'invalid_purchase': 'Error',
             'door_alarm': 'Alarm'
         }
 
@@ -217,7 +217,7 @@ class AudioSettingsScreen(BaseDebugSubScreen):
                 file_exists = Path(sound_path).exists()
 
                 # Status indicator
-                status_icon = "✓" if file_exists else "✗"
+                status_icon = "OK" if file_exists else "X"
                 status_color = (0, 1, 0, 1) if file_exists else (1, 0, 0, 1)
 
                 # File info row
@@ -254,7 +254,7 @@ class AudioSettingsScreen(BaseDebugSubScreen):
     def _build_status_card(self) -> LiveStatusCard:
         """Build live audio status card."""
         return LiveStatusCard(
-            title="Audio-Status",
+            title="Audio Status",
             get_status_callback=self._get_audio_status,
             update_interval=2.0
         )
@@ -262,7 +262,7 @@ class AudioSettingsScreen(BaseDebugSubScreen):
     def _build_reset_button(self) -> MDRaisedButton:
         """Build reset to defaults button."""
         return MDRaisedButton(
-            text="Werkseinstellungen",
+            text="Factory Reset",
             size_hint_y=None,
             height="60dp",
             md_bg_color=CORAL_ACCENT,
@@ -323,22 +323,22 @@ class AudioSettingsScreen(BaseDebugSubScreen):
 
         # Connection status
         is_connected = self.hardware.audio.is_connected()
-        conn_status = "JA" if is_connected else "NEIN"
+        conn_status = "YES" if is_connected else "NO"
         conn_color = (0, 1, 0, 1) if is_connected else (1, 0, 0, 1)
-        status_items.append(("Verbunden", conn_status, conn_color))
+        status_items.append(("Connected", conn_status, conn_color))
 
         # Volume
         volume = self.config_manager.config.hardware.audio.volume
         volume_percent = int(volume * 100)
-        status_items.append(("Lautstärke", f"{volume_percent}%", (1, 1, 1, 1)))
+        status_items.append(("Volume", f"{volume_percent}%", (1, 1, 1, 1)))
 
         return status_items
 
     def _reset_to_defaults(self):
         """Reset audio settings to factory defaults."""
         show_confirm_dialog(
-            title="Zurücksetzen bestätigen",
-            text="Möchten Sie die Audio-Einstellungen auf Werkseinstellungen zurücksetzen?",
+            title="Confirm Reset",
+            text="Reset audio settings to factory defaults?",
             on_confirm=self._do_reset
         )
 

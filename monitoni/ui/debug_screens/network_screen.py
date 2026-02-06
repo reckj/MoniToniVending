@@ -32,6 +32,7 @@ from monitoni.ui.debug_screens.widgets import (
     show_confirm_dialog,
     CORAL_ACCENT,
     NEAR_BLACK,
+    INPUT_BUTTON,
 )
 
 
@@ -65,7 +66,7 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
 
         super().__init__(navigate_back=navigate_back, **kwargs)
 
-        self.title = "Netzwerk"
+        self.title = "Network"
 
         self._build_content()
 
@@ -101,11 +102,11 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
 
     def _build_server_card(self) -> SettingsCard:
         """Build server connection settings card."""
-        card = SettingsCard(title="Server-Verbindung")
+        card = SettingsCard(title="Server Connection")
 
         # Server URL (tappable text field)
         url_row = self._build_text_field_row(
-            label="Server-URL",
+            label="Server URL",
             config_path="purchase_server.base_url",
             hint="http://example.com"
         )
@@ -113,7 +114,7 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
 
         # Machine ID (tappable text field)
         machine_id_row = self._build_text_field_row(
-            label="Maschinen-ID",
+            label="Machine ID",
             config_path="system.machine_id",
             hint="VM001"
         )
@@ -121,7 +122,7 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
 
         # Poll interval (numeric)
         poll_interval_field = NumpadField(
-            label="Abfrage-Intervall (s)",
+            label="Poll Interval (s)",
             config_path="purchase_server.poll_interval_s",
             config_manager=self.config_manager,
             allow_decimal=True,
@@ -143,7 +144,7 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
 
         # Retry attempts (numeric)
         retry_field = NumpadField(
-            label="Wiederholungen",
+            label="Retries",
             config_path="purchase_server.retry_attempts",
             config_manager=self.config_manager,
             allow_decimal=False,
@@ -161,7 +162,7 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
         )
 
         toggle_label = MDLabel(
-            text="Server aktiviert",
+            text="Server Enabled",
             size_hint_x=0.7,
             font_style='Body1'
         )
@@ -216,7 +217,7 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
         value_button = MDRaisedButton(
             text=str(current_value),
             size_hint_x=0.6,
-            md_bg_color=NEAR_BLACK,
+            md_bg_color=INPUT_BUTTON,
             on_release=lambda x: self._open_text_dialog(
                 label, config_path, hint, value_button
             )
@@ -227,11 +228,11 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
 
     def _build_connection_test_card(self) -> SettingsCard:
         """Build connection test card."""
-        card = SettingsCard(title="Verbindungs-Test")
+        card = SettingsCard(title="Connection Test")
 
         # Test button
         test_button = MDRaisedButton(
-            text="Verbindung testen",
+            text="Test Connection",
             size_hint_y=None,
             height="70dp",
             md_bg_color=CORAL_ACCENT,
@@ -241,7 +242,7 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
 
         # Result display
         self.test_result_label = MDLabel(
-            text="Bereit zum Testen",
+            text="Ready to test",
             font_style='Body1',
             halign='center',
             size_hint_y=None,
@@ -253,11 +254,11 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
 
     def _build_network_status_card(self) -> SettingsCard:
         """Build network status card."""
-        card = SettingsCard(title="Netzwerk-Status")
+        card = SettingsCard(title="Network Status")
 
         # WiFi SSID
         self.wifi_label = MDLabel(
-            text="WiFi: Lade...",
+            text="WiFi: Loading...",
             font_style='Body2',
             size_hint_y=None,
             height="30dp"
@@ -266,7 +267,7 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
 
         # IP address
         self.ip_label = MDLabel(
-            text="IP-Adresse: Lade...",
+            text="IP Address: Loading...",
             font_style='Body2',
             size_hint_y=None,
             height="30dp"
@@ -285,7 +286,7 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
 
         # Status
         self.network_status_label = MDLabel(
-            text="Status: Unbekannt",
+            text="Status: Unknown",
             font_style='Body2',
             size_hint_y=None,
             height="30dp"
@@ -296,12 +297,12 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
 
     def _build_telemetry_card(self) -> SettingsCard:
         """Build telemetry info card."""
-        card = SettingsCard(title="Telemetrie")
+        card = SettingsCard(title="Telemetry")
 
         # Telemetry port
         port = self.config_manager.config.telemetry.port
         port_label = MDLabel(
-            text=f"Telemetrie-Port: {port}",
+            text=f"Telemetry Port: {port}",
             font_style='Body2',
             size_hint_y=None,
             height="30dp"
@@ -317,14 +318,14 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
         )
 
         self.pin_label = MDLabel(
-            text="Debug-PIN: ****",
+            text="Debug PIN: ****",
             font_style='Body2',
             size_hint_x=0.7
         )
         pin_row.add_widget(self.pin_label)
 
         reveal_btn = MDRaisedButton(
-            text="Anzeigen",
+            text="Show",
             size_hint_x=0.3,
             md_bg_color=NEAR_BLACK,
             size_hint_y=None,
@@ -338,9 +339,9 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
 
         # Telemetry enabled
         enabled = self.config_manager.config.telemetry.enabled
-        enabled_text = "JA" if enabled else "NEIN"
+        enabled_text = "YES" if enabled else "NO"
         enabled_label = MDLabel(
-            text=f"Telemetrie aktiviert: {enabled_text}",
+            text=f"Telemetry Enabled: {enabled_text}",
             font_style='Body2',
             size_hint_y=None,
             height="30dp"
@@ -352,7 +353,7 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
     def _build_reset_button(self) -> MDRaisedButton:
         """Build reset to defaults button."""
         return MDRaisedButton(
-            text="Werkseinstellungen",
+            text="Factory Reset",
             size_hint_y=None,
             height="60dp",
             md_bg_color=CORAL_ACCENT,
@@ -410,7 +411,7 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
             return
 
         self._connection_test_running = True
-        self.test_result_label.text = "Teste..."
+        self.test_result_label.text = "Testing..."
         self.test_result_label.theme_text_color = 'Primary'
 
         # Run test in background thread
@@ -441,7 +442,7 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
                 # Success
                 Clock.schedule_once(
                     lambda dt: self._display_test_result(
-                        f"Verbunden - Server erreichbar ({elapsed:.2f}s)",
+                        f"Connected - Server reachable ({elapsed:.2f}s)",
                         success=True
                     ),
                     0
@@ -450,7 +451,7 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
                 # Failed
                 Clock.schedule_once(
                     lambda dt: self._display_test_result(
-                        "Fehler - Keine Antwort vom Server",
+                        "Error - No response from server",
                         success=False
                     ),
                     0
@@ -460,7 +461,7 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
             # Error
             Clock.schedule_once(
                 lambda dt: self._display_test_result(
-                    f"Fehler - {str(e)}",
+                    f"Error - {str(e)}",
                     success=False
                 ),
                 0
@@ -500,22 +501,22 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
         if wifi_ssid:
             self.wifi_label.text = f"WiFi: {wifi_ssid}"
         else:
-            self.wifi_label.text = "WiFi: Nicht verbunden"
+            self.wifi_label.text = "WiFi: Not connected"
 
         # Get IP address
         ip_address = self._get_ip_address()
         if ip_address:
-            self.ip_label.text = f"IP-Adresse: {ip_address}"
+            self.ip_label.text = f"IP Address: {ip_address}"
         else:
-            self.ip_label.text = "IP: Nicht verfügbar"
+            self.ip_label.text = "IP: Not available"
 
         # Update network status based on connectivity
         if wifi_ssid and ip_address:
-            self.network_status_label.text = "Status: Verbunden"
+            self.network_status_label.text = "Status: Connected"
             self.network_status_label.theme_text_color = 'Custom'
             self.network_status_label.text_color = (0, 1, 0, 1)
         else:
-            self.network_status_label.text = "Status: Getrennt"
+            self.network_status_label.text = "Status: Disconnected"
             self.network_status_label.theme_text_color = 'Custom'
             self.network_status_label.text_color = (1, 0, 0, 1)
 
@@ -579,21 +580,21 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
         """Toggle debug PIN visibility."""
         if self._pin_revealed:
             # Hide PIN
-            self.pin_label.text = "Debug-PIN: ****"
-            button.text = "Anzeigen"
+            self.pin_label.text = "Debug PIN: ****"
+            button.text = "Show"
             self._pin_revealed = False
         else:
             # Show PIN
             pin = self.config_manager.config.telemetry.debug_pin
-            self.pin_label.text = f"Debug-PIN: {pin}"
-            button.text = "Verbergen"
+            self.pin_label.text = f"Debug PIN: {pin}"
+            button.text = "Hide"
             self._pin_revealed = True
 
     def _reset_to_defaults(self):
         """Reset network settings to factory defaults."""
         show_confirm_dialog(
-            title="Zurücksetzen bestätigen",
-            text="Möchten Sie die Netzwerk-Einstellungen auf Werkseinstellungen zurücksetzen?",
+            title="Confirm Reset",
+            text="Reset network settings to factory defaults?",
             on_confirm=self._do_reset
         )
 

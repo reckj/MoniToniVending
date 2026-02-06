@@ -62,10 +62,10 @@ class StatsSettingsScreen(BaseDebugSubScreen):
 
         super().__init__(navigate_back=navigate_back, **kwargs)
 
-        self.title = "Statistik & Logs"
+        self.title = "Statistics & Logs"
 
         # Current filter state
-        self.current_filter = "ALLE"
+        self.current_filter = "ALL"
         self.log_entries = []
 
         # UI references
@@ -94,11 +94,11 @@ class StatsSettingsScreen(BaseDebugSubScreen):
 
     def _build_counters_card(self) -> SettingsCard:
         """Build counters display card."""
-        card = SettingsCard(title="Zähler")
+        card = SettingsCard(title="Counters")
 
         # Container for counter values
         self.counters_label = MDLabel(
-            text="Lade Statistiken...",
+            text="Loading statistics...",
             size_hint_y=None,
             height="150dp",
             font_style='Body1',
@@ -108,7 +108,7 @@ class StatsSettingsScreen(BaseDebugSubScreen):
 
         # Refresh button
         refresh_btn = MDRaisedButton(
-            text="Aktualisieren",
+            text="Refresh",
             size_hint_y=None,
             height="50dp",
             md_bg_color=CORAL_ACCENT,
@@ -130,12 +130,12 @@ class StatsSettingsScreen(BaseDebugSubScreen):
             height="50dp"
         )
 
-        filters = ["ALLE", "DEBUG", "INFO", "WARNUNG", "FEHLER"]
+        filters = ["ALL", "DEBUG", "INFO", "WARNING", "ERROR"]
         for filter_name in filters:
             btn = MDRaisedButton(
                 text=filter_name,
                 size_hint=(1, 1),
-                md_bg_color=CORAL_ACCENT if filter_name == "ALLE" else NEAR_BLACK,
+                md_bg_color=CORAL_ACCENT if filter_name == "ALL" else NEAR_BLACK,
                 on_release=lambda x, f=filter_name: self._on_filter_changed(f)
             )
             self.filter_buttons[filter_name] = btn
@@ -156,7 +156,7 @@ class StatsSettingsScreen(BaseDebugSubScreen):
 
         # Refresh logs button
         refresh_logs_btn = MDRaisedButton(
-            text="Aktualisieren",
+            text="Refresh",
             size_hint_y=None,
             height="50dp",
             md_bg_color=CORAL_ACCENT,
@@ -172,7 +172,7 @@ class StatsSettingsScreen(BaseDebugSubScreen):
 
         # USB export button
         usb_btn = MDRaisedButton(
-            text="Logs exportieren (USB)",
+            text="Export Logs (USB)",
             size_hint_y=None,
             height="60dp",
             md_bg_color=NEAR_BLACK,
@@ -182,7 +182,7 @@ class StatsSettingsScreen(BaseDebugSubScreen):
 
         # Local export button
         local_btn = MDRaisedButton(
-            text="Logs exportieren (lokal)",
+            text="Export Logs (local)",
             size_hint_y=None,
             height="60dp",
             md_bg_color=NEAR_BLACK,
@@ -213,21 +213,20 @@ class StatsSettingsScreen(BaseDebugSubScreen):
                 last_error = error_logs[0]
                 last_error_text = f"{last_error['timestamp'][:19]} - {last_error['message']}"
             else:
-                last_error_text = "Keine Fehler"
+                last_error_text = "No errors"
 
-            # Format counters text with German labels
-            counters_text = f"""[b]Erfolgreiche Käufe:[/b] {stats.get('completed_purchases', 0)}
-[b]Fehlgeschlagene Käufe:[/b] {stats.get('failed_purchases', 0)}
-[b]Netzwerk-Fehler:[/b] {stats.get('network_incidents', 0)}
-[b]Server-Fehler:[/b] {stats.get('server_incidents', 0)}
-[b]Betriebszeit:[/b] {uptime_text}
-[b]Letzter Fehler:[/b] {last_error_text}"""
+            counters_text = f"""[b]Successful Purchases:[/b] {stats.get('completed_purchases', 0)}
+[b]Failed Purchases:[/b] {stats.get('failed_purchases', 0)}
+[b]Network Errors:[/b] {stats.get('network_incidents', 0)}
+[b]Server Errors:[/b] {stats.get('server_incidents', 0)}
+[b]Uptime:[/b] {uptime_text}
+[b]Last Error:[/b] {last_error_text}"""
 
             # Update label on main thread
             Clock.schedule_once(lambda dt: setattr(self.counters_label, 'text', counters_text), 0)
 
         except Exception as e:
-            error_text = f"[color=#ff0000]Fehler beim Laden der Statistiken: {str(e)}[/color]"
+            error_text = f"[color=#ff0000]Error loading statistics: {str(e)}[/color]"
             Clock.schedule_once(lambda dt: setattr(self.counters_label, 'text', error_text), 0)
 
     async def _refresh_logs(self):
@@ -241,9 +240,9 @@ class StatsSettingsScreen(BaseDebugSubScreen):
                 level = LogLevel.DEBUG
             elif self.current_filter == "INFO":
                 level = LogLevel.INFO
-            elif self.current_filter == "WARNUNG":
+            elif self.current_filter == "WARNING":
                 level = LogLevel.WARNING
-            elif self.current_filter == "FEHLER":
+            elif self.current_filter == "ERROR":
                 level = LogLevel.ERROR
 
             # Fetch logs
@@ -264,7 +263,7 @@ class StatsSettingsScreen(BaseDebugSubScreen):
 
         if not self.log_entries:
             # No logs found
-            item = OneLineListItem(text="Keine Logs gefunden")
+            item = OneLineListItem(text="No logs found")
             self.log_list.add_widget(item)
             return
 
@@ -291,7 +290,7 @@ class StatsSettingsScreen(BaseDebugSubScreen):
     def _display_error_logs(self, error_message: str):
         """Display error message in logs list."""
         self.log_list.clear_widgets()
-        item = OneLineListItem(text=f"[color=#ff0000]Fehler: {error_message}[/color]", markup=True)
+        item = OneLineListItem(text=f"[color=#ff0000]Error: {error_message}[/color]", markup=True)
         self.log_list.add_widget(item)
 
     def _on_filter_changed(self, filter_name: str):
@@ -337,8 +336,8 @@ class StatsSettingsScreen(BaseDebugSubScreen):
                 # No USB found
                 Clock.schedule_once(
                     lambda dt: self._show_dialog(
-                        "Kein USB-Stick gefunden",
-                        "Bitte USB-Stick einstecken und erneut versuchen."
+                        "No USB Drive Found",
+                        "Please insert a USB drive and try again."
                     ),
                     0
                 )
@@ -356,8 +355,8 @@ class StatsSettingsScreen(BaseDebugSubScreen):
             # Show success dialog
             Clock.schedule_once(
                 lambda dt: self._show_dialog(
-                    "Export erfolgreich",
-                    f"Logs exportiert nach:\n{filepath}"
+                    "Export Successful",
+                    f"Logs exported to:\n{filepath}"
                 ),
                 0
             )
@@ -365,8 +364,8 @@ class StatsSettingsScreen(BaseDebugSubScreen):
         except Exception as e:
             Clock.schedule_once(
                 lambda dt: self._show_dialog(
-                    "Export fehlgeschlagen",
-                    f"Fehler: {str(e)}"
+                    "Export Failed",
+                    f"Error: {str(e)}"
                 ),
                 0
             )
@@ -390,8 +389,8 @@ class StatsSettingsScreen(BaseDebugSubScreen):
             # Show success dialog
             Clock.schedule_once(
                 lambda dt: self._show_dialog(
-                    "Export erfolgreich",
-                    f"Logs exportiert nach:\n{filepath.absolute()}"
+                    "Export Successful",
+                    f"Logs exported to:\n{filepath.absolute()}"
                 ),
                 0
             )
@@ -399,8 +398,8 @@ class StatsSettingsScreen(BaseDebugSubScreen):
         except Exception as e:
             Clock.schedule_once(
                 lambda dt: self._show_dialog(
-                    "Export fehlgeschlagen",
-                    f"Fehler: {str(e)}"
+                    "Export Failed",
+                    f"Error: {str(e)}"
                 ),
                 0
             )

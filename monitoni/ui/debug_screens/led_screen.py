@@ -15,6 +15,7 @@ import asyncio
 from typing import Optional
 from kivy.clock import Clock
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.slider import Slider
 from kivymd.uix.button import MDRaisedButton
 from kivymd.uix.label import MDLabel
 from kivymd.uix.dialog import MDDialog
@@ -29,6 +30,7 @@ from monitoni.ui.debug_screens.widgets import (
     show_confirm_dialog,
     CORAL_ACCENT,
     NEAR_BLACK,
+    INPUT_BUTTON,
 )
 from monitoni.core.config import ConfigManager
 from monitoni.hardware.manager import HardwareManager
@@ -69,18 +71,18 @@ class LEDSettingsScreen(BaseDebugSubScreen):
         self._zone_test_tasks = []
 
         super().__init__(navigate_back=navigate_back, **kwargs)
-        self.title = "LED-Steuerung"
+        self.title = "LED Control"
 
         self._build_content()
 
     def _build_content(self):
         """Build the LED settings screen content."""
         # Card 1: WLED Connection & Brightness
-        brightness_card = SettingsCard(title="WLED-Verbindung & Helligkeit")
+        brightness_card = SettingsCard(title="WLED Connection & Brightness")
 
         # Pixel count
         pixel_count_field = NumpadField(
-            label="Pixel-Anzahl",
+            label="Pixel Count",
             config_path="hardware.wled.pixel_count",
             config_manager=self.config_manager,
             allow_decimal=False,
@@ -97,7 +99,7 @@ class LEDSettingsScreen(BaseDebugSubScreen):
             spacing="10dp"
         )
         ip_label = MDLabel(
-            text="IP-Adresse",
+            text="IP Address",
             size_hint_x=0.6,
             font_style='Body1'
         )
@@ -107,62 +109,66 @@ class LEDSettingsScreen(BaseDebugSubScreen):
         self.ip_button = MDRaisedButton(
             text=current_ip,
             size_hint_x=0.4,
-            md_bg_color=NEAR_BLACK,
+            md_bg_color=INPUT_BUTTON,
             on_release=lambda x: self._open_ip_dialog()
         )
         ip_row.add_widget(self.ip_button)
         brightness_card.add_content(ip_row)
 
-        # FPS
-        fps_field = NumpadField(
-            label="FPS",
-            config_path="hardware.wled.fps",
-            config_manager=self.config_manager,
-            allow_decimal=False,
-            min_value=1,
-            max_value=60
-        )
-        brightness_card.add_content(fps_field)
-
-        # Brightness control
+        # Brightness control with slider
         brightness_row = BoxLayout(
             orientation='vertical',
             size_hint_y=None,
-            spacing="10dp"
+            height="80dp",
+            spacing="5dp"
         )
-        brightness_row.bind(minimum_height=brightness_row.setter('height'))
 
-        brightness_label = MDLabel(
-            text="Helligkeit",
-            font_style='Body1',
+        # Label + value display
+        brightness_header = BoxLayout(
+            orientation='horizontal',
             size_hint_y=None,
             height="30dp"
         )
-        brightness_row.add_widget(brightness_label)
+        brightness_label = MDLabel(
+            text="Brightness",
+            size_hint_x=0.6,
+            font_style='Body1'
+        )
+        brightness_header.add_widget(brightness_label)
 
-        # Get current brightness from config (stored in animations.idle.brightness)
         try:
             current_brightness = self.config_manager.config.led.animations.get('idle', {}).get('brightness', 0.8)
         except:
             current_brightness = 0.8
+        brightness_pct = int(current_brightness * 100)
 
-        brightness_value_field = NumpadField(
-            label="Helligkeit (%)",
-            config_path="led.animations.idle.brightness",
-            config_manager=self.config_manager,
-            allow_decimal=True,
-            min_value=0,
-            max_value=100,
-            on_value_changed=self._on_brightness_changed
+        self.brightness_value_label = MDLabel(
+            text=f"{brightness_pct}%",
+            size_hint_x=0.4,
+            font_style='Body1',
+            halign='right'
         )
-        brightness_row.add_widget(brightness_value_field)
+        brightness_header.add_widget(self.brightness_value_label)
+        brightness_row.add_widget(brightness_header)
+
+        # Slider (0-100)
+        brightness_slider = Slider(
+            min=0,
+            max=100,
+            value=brightness_pct,
+            step=1,
+            size_hint_y=None,
+            height="40dp"
+        )
+        brightness_slider.bind(value=self._on_brightness_slider_changed)
+        brightness_row.add_widget(brightness_slider)
 
         brightness_card.add_content(brightness_row)
 
         self.add_content(brightness_card)
 
         # Card 2: Color Test
-        color_card = SettingsCard(title="Farb-Test")
+        color_card = SettingsCard(title="Color Test")
 
         # Row 1: Red, Green, Blue
         color_row1 = BoxLayout(
@@ -172,7 +178,7 @@ class LEDSettingsScreen(BaseDebugSubScreen):
             spacing="10dp"
         )
 
-        for color_name, rgb in [("Rot", (255, 0, 0)), ("Grün", (0, 255, 0)), ("Blau", (0, 0, 255))]:
+        for color_name, rgb in [("Red", (255, 0, 0)), ("Green", (0, 255, 0)), ("Blue", (0, 0, 255))]:
             btn = MDRaisedButton(
                 text=color_name,
                 size_hint=(1, 1),
@@ -192,9 +198,9 @@ class LEDSettingsScreen(BaseDebugSubScreen):
         )
 
         for color_name, rgb, text_color in [
-            ("Weiß", (255, 255, 255), (0, 0, 0, 1)),
-            ("Gelb", (255, 255, 0), (0, 0, 0, 1)),
-            ("Aus", (0, 0, 0), (1, 1, 1, 1))
+            ("White", (255, 255, 255), (0, 0, 0, 1)),
+            ("Yellow", (255, 255, 0), (0, 0, 0, 1)),
+            ("Off", (0, 0, 0), (1, 1, 1, 1))
         ]:
             btn = MDRaisedButton(
                 text=color_name,
@@ -234,12 +240,12 @@ class LEDSettingsScreen(BaseDebugSubScreen):
         self.add_content(color_card)
 
         # Card 3: Zone Mapping
-        zone_card = SettingsCard(title="Zonen-Zuordnung")
+        zone_card = SettingsCard(title="Zone Mapping")
 
         # Info label
         pixel_count = self.config_manager.config.hardware.wled.pixel_count
         info_label = MDLabel(
-            text=f"Pixel gesamt: {pixel_count}",
+            text=f"Total pixels: {pixel_count}",
             size_hint_y=None,
             height="30dp",
             font_style='Caption'
@@ -264,7 +270,7 @@ class LEDSettingsScreen(BaseDebugSubScreen):
 
             # Level label
             level_label = MDLabel(
-                text=f"Fach {level}:",
+                text=f"Level {level}:",
                 size_hint_x=0.25,
                 font_style='Body2'
             )
@@ -322,7 +328,7 @@ class LEDSettingsScreen(BaseDebugSubScreen):
 
         # Test all zones button
         test_all_btn = MDRaisedButton(
-            text="Alle Zonen testen",
+            text="Test All Zones",
             size_hint_y=None,
             height="60dp",
             md_bg_color=CORAL_ACCENT,
@@ -333,17 +339,17 @@ class LEDSettingsScreen(BaseDebugSubScreen):
         self.add_content(zone_card)
 
         # Card 4: Animations
-        animation_card = SettingsCard(title="Animationen")
+        animation_card = SettingsCard(title="Animations")
 
         # Animation buttons (3 per row)
         animations = [
-            ("idle", "Leerlauf"),
-            ("sleep", "Schlaf"),
-            ("valid_purchase", "Kauf gültig"),
-            ("invalid_purchase", "Kauf ungültig"),
-            ("door_alarm", "Tür-Alarm"),
+            ("idle", "Idle"),
+            ("sleep", "Sleep"),
+            ("valid_purchase", "Valid Purchase"),
+            ("invalid_purchase", "Invalid Purchase"),
+            ("door_alarm", "Door Alarm"),
             ("offline", "Offline"),
-            ("level_highlight", "Fach-Highlight"),
+            ("level_highlight", "Level Highlight"),
         ]
 
         # Create rows of 3 buttons each
@@ -372,7 +378,7 @@ class LEDSettingsScreen(BaseDebugSubScreen):
 
         # All off button
         all_off_btn = MDRaisedButton(
-            text="Alle aus",
+            text="All Off",
             size_hint_y=None,
             height="60dp",
             md_bg_color=(0.3, 0.3, 0.3, 1),
@@ -384,7 +390,7 @@ class LEDSettingsScreen(BaseDebugSubScreen):
 
         # Card 5: Live Status
         status_card = LiveStatusCard(
-            title="LED-Status",
+            title="LED Status",
             get_status_callback=self._get_led_status,
             update_interval=2.0
         )
@@ -393,7 +399,7 @@ class LEDSettingsScreen(BaseDebugSubScreen):
 
         # Reset button
         reset_btn = MDRaisedButton(
-            text="Werkseinstellungen",
+            text="Factory Reset",
             size_hint_y=None,
             height="60dp",
             md_bg_color=(0.6, 0.3, 0.3, 1),
@@ -434,16 +440,16 @@ class LEDSettingsScreen(BaseDebugSubScreen):
             dialog.dismiss()
 
         dialog = MDDialog(
-            title="IP-Adresse eingeben",
+            title="Enter IP Address",
             type="custom",
             content_cls=content,
             buttons=[
                 MDRaisedButton(
-                    text="ABBRECHEN",
+                    text="CANCEL",
                     on_release=lambda x: dialog.dismiss()
                 ),
                 MDRaisedButton(
-                    text="SPEICHERN",
+                    text="SAVE",
                     md_bg_color=CORAL_ACCENT,
                     on_release=on_save
                 ),
@@ -451,10 +457,18 @@ class LEDSettingsScreen(BaseDebugSubScreen):
         )
         dialog.open()
 
-    def _on_brightness_changed(self, value: float):
-        """Handle brightness value change."""
-        # Convert percentage (0-100) to float (0.0-1.0)
-        brightness = value / 100.0
+    def _on_brightness_slider_changed(self, instance, value):
+        """Handle brightness slider change."""
+        pct = int(value)
+        self.brightness_value_label.text = f"{pct}%"
+        brightness = pct / 100.0
+
+        # Save to config
+        update_config_value(
+            self.config_manager,
+            "led.animations.idle.brightness",
+            brightness
+        )
 
         # Apply to hardware immediately
         if self.hardware.led:
@@ -574,9 +588,9 @@ class LEDSettingsScreen(BaseDebugSubScreen):
         if self.hardware.led:
             # Connection status
             is_connected = self.hardware.led.is_connected()
-            connected_text = "JA" if is_connected else "NEIN"
+            connected_text = "YES" if is_connected else "NO"
             connected_color = (0, 1, 0, 1) if is_connected else (1, 0, 0, 1)
-            status_items.append(("Verbunden:", connected_text, connected_color))
+            status_items.append(("Connected:", connected_text, connected_color))
 
             # IP address
             ip = self.config_manager.config.hardware.wled.ip_address
@@ -584,9 +598,9 @@ class LEDSettingsScreen(BaseDebugSubScreen):
 
             # Pixel count
             pixels = self.config_manager.config.hardware.wled.pixel_count
-            status_items.append(("Pixel:", str(pixels), (1, 1, 1, 1)))
+            status_items.append(("Pixels:", str(pixels), (1, 1, 1, 1)))
         else:
-            status_items.append(("Status:", "Nicht verfügbar", (0.5, 0.5, 0.5, 1)))
+            status_items.append(("Status:", "Not available", (0.5, 0.5, 0.5, 1)))
 
         return status_items
 
@@ -604,16 +618,16 @@ class LEDSettingsScreen(BaseDebugSubScreen):
                 self._show_reset_error()
 
         show_confirm_dialog(
-            title="Werkseinstellungen wiederherstellen",
-            text="Möchten Sie wirklich alle LED-Einstellungen auf Werkseinstellungen zurücksetzen?\n\nDies betrifft:\n- WLED-Verbindung\n- Zonen-Zuordnung\n- Animationen",
+            title="Restore Factory Settings",
+            text="Reset all LED settings to factory defaults?\n\nThis affects:\n- WLED connection\n- Zone mapping\n- Animations",
             on_confirm=confirm_reset
         )
 
     def _show_reset_success(self):
         """Show success message after reset."""
         dialog = MDDialog(
-            title="Erfolgreich",
-            text="LED-Einstellungen wurden zurückgesetzt.\n\nBitte kehren Sie zum Menü zurück und öffnen Sie diesen Bildschirm erneut, um die neuen Werte anzuzeigen.",
+            title="Success",
+            text="LED settings have been reset.\n\nPlease return to menu and reopen this screen to see new values.",
             buttons=[
                 MDRaisedButton(
                     text="OK",
@@ -627,8 +641,8 @@ class LEDSettingsScreen(BaseDebugSubScreen):
     def _show_reset_error(self):
         """Show error message if reset failed."""
         dialog = MDDialog(
-            title="Fehler",
-            text="Fehler beim Zurücksetzen der Einstellungen.",
+            title="Error",
+            text="Error resetting settings.",
             buttons=[
                 MDRaisedButton(
                     text="OK",
