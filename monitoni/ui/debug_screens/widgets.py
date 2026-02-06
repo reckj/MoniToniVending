@@ -420,3 +420,368 @@ def show_confirm_dialog(
 
     dialog.open()
     return dialog
+
+
+class HoldButton(MDRaisedButton):
+    """
+    Button that activates on touch_down and deactivates on touch_up.
+
+    Designed for hardware control where holding the button keeps hardware active.
+    Uses touch.grab pattern to ensure release is detected even if finger moves off button.
+    """
+
+    def __init__(
+        self,
+        text: str,
+        on_hold: Optional[Callable[[], None]] = None,
+        on_release_hold: Optional[Callable[[], None]] = None,
+        **kwargs
+    ):
+        """
+        Initialize hold button.
+
+        Args:
+            text: Button text
+            on_hold: Callback invoked when button is pressed down
+            on_release_hold: Callback invoked when button is released
+            **kwargs: Additional MDRaisedButton arguments
+        """
+        # Default styling
+        kwargs.setdefault('size_hint_y', None)
+        kwargs.setdefault('height', "60dp")
+
+        super().__init__(text=text, **kwargs)
+
+        self.on_hold = on_hold
+        self.on_release_hold = on_release_hold
+        self._holding = False
+        self._original_color = self.md_bg_color
+
+    def on_touch_down(self, touch):
+        """Handle touch down event."""
+        # Check if touch is within button bounds
+        if self.collide_point(*touch.pos):
+            # Grab the touch to receive on_touch_up even if finger moves
+            touch.grab(self)
+
+            # Mark as holding and activate
+            self._holding = True
+
+            # Visual feedback: change to coral
+            self._original_color = self.md_bg_color
+            self.md_bg_color = CORAL_ACCENT
+
+            # Invoke hold callback
+            if self.on_hold:
+                self.on_hold()
+
+            return True
+
+        return super().on_touch_down(touch)
+
+    def on_touch_up(self, touch):
+        """Handle touch up event."""
+        # Only process if this touch was grabbed by this button
+        if touch.grab_current is self:
+            # Release the grab
+            touch.ungrab(self)
+
+            # If we were holding, release
+            if self._holding:
+                self._holding = False
+
+                # Restore original color
+                self.md_bg_color = self._original_color
+
+                # Invoke release callback
+                if self.on_release_hold:
+                    self.on_release_hold()
+
+            return True
+
+        return super().on_touch_up(touch)
+
+    def on_pre_leave(self, *args):
+        """Safety: release if widget removed from tree while holding."""
+        if self._holding:
+            self._holding = False
+            if self.on_release_hold:
+                self.on_release_hold()
+
+
+class LiveStatusCard(MDCard):
+    """
+    Card that displays real-time hardware status with polling.
+
+    Periodically calls a callback to get status and updates the display.
+    Status items shown with colored text for visual indicators.
+    """
+
+    def __init__(
+        self,
+        title: str,
+        get_status_callback: Callable[[], List[Tuple[str, str, Tuple[float, float, float, float]]]],
+        update_interval: float = 0.5,
+        **kwargs
+    ):
+        """
+        Initialize live status card.
+
+        Args:
+            title: Card header text
+            get_status_callback: Callable returning list of (label, value, color) tuples
+                                 Can be sync or async function
+            update_interval: Seconds between status updates
+            **kwargs: Additional MDCard arguments
+        """
+        # Default styling
+        kwargs.setdefault('md_bg_color', NEAR_BLACK)
+        kwargs.setdefault('radius', [10, 10, 10, 10])
+        kwargs.setdefault('padding', "15dp")
+        kwargs.setdefault('size_hint_y', None)
+
+        super().__init__(**kwargs)
+
+        self.get_status_callback = get_status_callback
+        self.update_interval = update_interval
+
+        # Build UI
+        self._build_ui(title)
+
+        # Schedule status updates with lambda for strong reference
+        self._update_event = Clock.schedule_interval(
+            lambda dt: self._update_status(),
+            update_interval
+        )
+
+    def _build_ui(self, title: str):
+        """Build the status card UI."""
+        root = BoxLayout(orientation='vertical', spacing="10dp", size_hint_y=None)
+        root.bind(minimum_height=root.setter('height'))
+
+        # Header with coral accent
+        header = MDLabel(
+            text=title,
+            font_style='H6',
+            theme_text_color='Custom',
+            text_color=CORAL_ACCENT,
+            size_hint_y=None,
+            height="30dp"
+        )
+        root.add_widget(header)
+
+        # Status items container
+        self.status_container = BoxLayout(
+            orientation='vertical',
+            spacing="5dp",
+            size_hint_y=None
+        )
+        self.status_container.bind(minimum_height=self.status_container.setter('height'))
+        root.add_widget(self.status_container)
+
+        self.add_widget(root)
+
+        # Auto-update card height
+        root.bind(minimum_height=lambda *args: setattr(self, 'height', root.minimum_height))
+
+    def _update_status(self):
+        """Update status display by calling the callback."""
+        try:
+            # Call the status callback
+            if inspect.iscoroutinefunction(self.get_status_callback):
+                # Async callback: schedule via asyncio
+                asyncio.create_task(self._update_status_async())
+            else:
+                # Sync callback: call directly
+                status_items = self.get_status_callback()
+                self._display_status(status_items)
+
+        except Exception as e:
+            # Handle errors gracefully: show error in red
+            print(f"LiveStatusCard error: {e}")
+            self._display_status([("Status", "ERROR", ERROR_RED)])
+
+    async def _update_status_async(self):
+        """Handle async status callback."""
+        try:
+            status_items = await self.get_status_callback()
+            # Schedule UI update on main thread
+            Clock.schedule_once(lambda dt: self._display_status(status_items), 0)
+        except Exception as e:
+            print(f"LiveStatusCard async error: {e}")
+            Clock.schedule_once(lambda dt: self._display_status([("Status", "ERROR", ERROR_RED)]), 0)
+
+    def _display_status(self, status_items: List[Tuple[str, str, Tuple[float, float, float, float]]]):
+        """Display status items in the UI."""
+        # Clear existing items
+        self.status_container.clear_widgets()
+
+        # Add each status item as a row
+        for label, value, color in status_items:
+            row = BoxLayout(
+                orientation='horizontal',
+                size_hint_y=None,
+                height="25dp",
+                spacing="10dp"
+            )
+
+            # Label on left
+            label_widget = MDLabel(
+                text=label,
+                size_hint_x=0.5,
+                font_style='Body2'
+            )
+            row.add_widget(label_widget)
+
+            # Value on right with colored text
+            value_widget = MDLabel(
+                text=value,
+                size_hint_x=0.5,
+                font_style='Body2',
+                theme_text_color='Custom',
+                text_color=color,
+                halign='right'
+            )
+            row.add_widget(value_widget)
+
+            self.status_container.add_widget(row)
+
+    def on_pre_leave(self, *args):
+        """Cancel scheduled updates when widget is removed."""
+        if hasattr(self, '_update_event') and self._update_event:
+            self._update_event.cancel()
+
+    def cleanup(self):
+        """Explicit cleanup method for manual cleanup."""
+        if hasattr(self, '_update_event') and self._update_event:
+            self._update_event.cancel()
+
+
+class NumpadField(BoxLayout):
+    """
+    Convenience widget for numeric config fields.
+
+    Displays current value and opens NumpadDialog on tap.
+    Auto-saves to config and handles risky path confirmations.
+    """
+
+    def __init__(
+        self,
+        label: str,
+        config_path: str,
+        config_manager: ConfigManager,
+        allow_decimal: bool = False,
+        min_value: Optional[float] = None,
+        max_value: Optional[float] = None,
+        on_value_changed: Optional[Callable[[float], None]] = None,
+        **kwargs
+    ):
+        """
+        Initialize numpad field.
+
+        Args:
+            label: Field label text
+            config_path: Dot-notation config path (e.g., "hardware.modbus.port")
+            config_manager: ConfigManager instance
+            allow_decimal: Whether to allow decimal input
+            min_value: Minimum allowed value
+            max_value: Maximum allowed value
+            on_value_changed: Optional callback invoked after value changes
+            **kwargs: Additional BoxLayout arguments
+        """
+        kwargs.setdefault('orientation', 'horizontal')
+        kwargs.setdefault('size_hint_y', None)
+        kwargs.setdefault('height', "50dp")
+        kwargs.setdefault('spacing', "10dp")
+
+        super().__init__(**kwargs)
+
+        self.label = label
+        self.config_path = config_path
+        self.config_manager = config_manager
+        self.allow_decimal = allow_decimal
+        self.min_value = min_value
+        self.max_value = max_value
+        self.on_value_changed = on_value_changed
+
+        # Get current value from config
+        self.current_value = self._get_current_value()
+
+        # Build UI
+        self._build_ui()
+
+    def _get_current_value(self) -> float:
+        """Get current value from config."""
+        path_parts = self.config_path.split('.')
+        current = self.config_manager.config.dict()
+
+        for part in path_parts:
+            if part in current:
+                current = current[part]
+            else:
+                return 0.0
+
+        return float(current) if current is not None else 0.0
+
+    def _build_ui(self):
+        """Build the field UI."""
+        # Label on left
+        label_widget = MDLabel(
+            text=self.label,
+            size_hint_x=0.6,
+            font_style='Body1'
+        )
+        self.add_widget(label_widget)
+
+        # Tappable value display on right
+        self.value_button = MDRaisedButton(
+            text=str(self.current_value),
+            size_hint_x=0.4,
+            md_bg_color=NEAR_BLACK,
+            on_release=lambda x: self._open_numpad()
+        )
+        self.add_widget(self.value_button)
+
+    def _open_numpad(self):
+        """Open numpad dialog for input."""
+        dialog = NumpadDialog(
+            title=self.label,
+            initial_value=self.current_value,
+            min_value=self.min_value,
+            max_value=self.max_value,
+            allow_decimal=self.allow_decimal,
+            on_submit=self._on_value_submitted
+        )
+        dialog.open()
+
+    def _on_value_submitted(self, new_value: float):
+        """Handle value submission from numpad."""
+        # Update config
+        success, needs_confirmation = update_config_value(
+            self.config_manager,
+            self.config_path,
+            new_value
+        )
+
+        if success:
+            if needs_confirmation:
+                # Show confirmation dialog for risky paths
+                show_confirm_dialog(
+                    title="Bestätigung erforderlich",
+                    text=f"Möchten Sie {self.label} wirklich auf {new_value} setzen?\n\nDies ist eine hardwarerelevante Einstellung.",
+                    on_confirm=lambda: self._apply_value(new_value)
+                )
+            else:
+                # Apply directly for non-risky paths
+                self._apply_value(new_value)
+        else:
+            print(f"Failed to update config for {self.config_path}")
+
+    def _apply_value(self, new_value: float):
+        """Apply the new value and update display."""
+        self.current_value = new_value
+        self.value_button.text = str(new_value)
+
+        # Invoke callback if provided
+        if self.on_value_changed:
+            self.on_value_changed(new_value)
