@@ -14,6 +14,8 @@ from monitoni.ui.debug_screens.sensor_screen import SensorSettingsScreen
 from monitoni.ui.debug_screens.audio_screen import AudioSettingsScreen
 from monitoni.ui.debug_screens.network_screen import NetworkSettingsScreen
 from monitoni.ui.debug_screens.stats_screen import StatsSettingsScreen
+from monitoni.ui.debug_screens.qr_management_screen import QRManagementScreen
+from monitoni.ui.debug_screens.maintenance_screen import MaintenanceScreen
 
 __all__ = [
     "BaseDebugSubScreen",
@@ -25,4 +27,6 @@ __all__ = [
     "AudioSettingsScreen",
     "NetworkSettingsScreen",
     "StatsSettingsScreen",
+    "QRManagementScreen",
+    "MaintenanceScreen",
 ]

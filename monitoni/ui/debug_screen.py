@@ -27,6 +27,8 @@ from monitoni.ui.debug_screens import (
     AudioSettingsScreen,
     NetworkSettingsScreen,
     StatsSettingsScreen,
+    QRManagementScreen,
+    MaintenanceScreen,
 )
 
 # Register icon font
@@ -338,6 +340,8 @@ class DebugScreen(Screen):
             'audio': (AudioSettingsScreen, "Audio"),
             'network': (NetworkSettingsScreen, "Netzwerk"),
             'stats': (StatsSettingsScreen, "Statistik & Logs"),
+            'qr_management': (QRManagementScreen, "QR Codes"),
+            'maintenance': (MaintenanceScreen, "Wartung & Status"),
         }
 
         for screen_name, (screen_class, title) in sub_screen_classes.items():
