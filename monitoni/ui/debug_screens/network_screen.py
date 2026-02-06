@@ -19,7 +19,7 @@ from kivy.clock import Clock
 from kivy.uix.boxlayout import BoxLayout
 from kivymd.uix.button import MDRaisedButton
 from kivymd.uix.label import MDLabel
-from kivymd.uix.switch import MDSwitch
+from kivymd.uix.selectioncontrol import MDSwitch
 
 from monitoni.core.config import ConfigManager
 from monitoni.ui.debug_screens.base import BaseDebugSubScreen
