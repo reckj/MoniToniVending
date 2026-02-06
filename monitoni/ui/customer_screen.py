@@ -38,21 +38,23 @@ QR_CODE_BASE_URL = "https://www.monitoni.zhdk.ch"
 
 class ProductButton(MDRaisedButton):
     """Button for product level selection."""
-    
+
     def __init__(self, level: int, **kwargs):
         """
         Initialize product button.
-        
+
         Args:
             level: Product level (1-10)
         """
         super().__init__(**kwargs)
         self.level = level
-        self.text = f"Level {level}"
+        self.text = f"{level}"
         self.size_hint = (1, None)
-        self.height = "90dp"
-        self.font_size = "24sp"
-        self.md_bg_color = (0.1, 0.5, 0.8, 1)  # Nice blue
+        self.height = "80dp"
+        self.font_size = "32sp"
+        self.md_bg_color = (0.12, 0.12, 0.12, 1)  # Near black
+        self.line_color = (1, 1, 1, 0.3)  # Subtle white border
+        self.elevation = 0  # Flat design
 
 
 class TurnButton(MDRaisedButton):
@@ -77,15 +79,16 @@ class TurnButton(MDRaisedButton):
         self.config = config
         self.logger = logger
         
-        self.text = "TURN"
+        self.text = "DREHEN"
         self.size_hint = (1, None)
-        self.height = "100dp"
-        self.font_size = "28sp"
-        self.md_bg_color = (0.8, 0.4, 0.1, 1)  # Orange
-        
+        self.height = "600dp"
+        self.font_size = "64sp"
+        self.md_bg_color = (0.95, 0.25, 0.2, 1)  # Bold coral/vermillion
+        self.elevation = 0  # Flat design
+
         self._is_turning = False
         self._motor_task = None
-        
+
         # Bind touch events
         self.bind(on_touch_down=self._on_press)
         self.bind(on_touch_up=self._on_release)
@@ -99,8 +102,8 @@ class TurnButton(MDRaisedButton):
             return True
             
         self._is_turning = True
-        self.md_bg_color = (0.2, 0.8, 0.2, 1)  # Green while active
-        self.text = "TURNING..."
+        self.md_bg_color = (0.1, 0.1, 0.1, 1)  # Dark while active
+        self.text = "•••"
         
         # Start motor sequence in background
         import threading
@@ -147,8 +150,8 @@ class TurnButton(MDRaisedButton):
             return False
             
         self._is_turning = False
-        self.md_bg_color = (0.8, 0.4, 0.1, 1)  # Back to orange
-        self.text = "TURN"
+        self.md_bg_color = (0.95, 0.25, 0.2, 1)  # Back to coral
+        self.text = "DREHEN"
         
         # Stop motor sequence in background
         import threading
@@ -191,27 +194,28 @@ class TurnButton(MDRaisedButton):
 
 class StatusCard(MDCard):
     """Card displaying current status."""
-    
-    status_text = StringProperty("Welcome! Select a product level")
-    
+
+    status_text = StringProperty("Wähle ein Fach")
+
     def __init__(self, **kwargs):
         """Initialize status card."""
         super().__init__(**kwargs)
         self.orientation = 'vertical'
         self.size_hint = (1, None)
-        self.height = "100dp"
-        self.padding = "15dp"
-        self.spacing = "10dp"
-        self.md_bg_color = (0.15, 0.15, 0.15, 1)
-        self.radius = [15, 15, 15, 15]
-        
-        # Status label
+        self.height = "60dp"
+        self.padding = "10dp"
+        self.spacing = "5dp"
+        self.md_bg_color = (0, 0, 0, 0)  # Transparent
+        self.radius = [0, 0, 0, 0]  # No radius
+        self.elevation = 0
+
+        # Status label - minimal, lowercase
         self.status_label = MDLabel(
             text=self.status_text,
             halign='center',
-            font_style='H5',
+            font_style='Body1',
             theme_text_color='Custom',
-            text_color=(1, 1, 1, 1)
+            text_color=(1, 1, 1, 0.6)  # Subtle white
         )
         self.add_widget(self.status_label)
         
@@ -228,17 +232,17 @@ class StatusCard(MDCard):
 
 
 class DebugAccessIndicator(Widget):
-    """Subtle triangle indicator in corner for debug access."""
-    
+    """Subtle indicator in corner for debug access."""
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.size_hint = (None, None)
-        self.size = (40, 40)
+        self.size = (30, 30)
         self.pos_hint = {'right': 1, 'top': 1}
-        
+
         with self.canvas:
-            # Subtle semi-transparent triangle in top-right corner
-            Color(0.3, 0.3, 0.3, 0.4)  # Dark gray, slightly transparent
+            # Minimal dot indicator
+            Color(1, 1, 1, 0.15)  # Very subtle white
             self.triangle = Triangle(points=[
                 self.x + self.width, self.y + self.height,  # top-right
                 self.x + self.width, self.y,               # bottom-right
@@ -483,37 +487,68 @@ class CustomerScreen(Screen):
         from kivy.uix.floatlayout import FloatLayout
         
         outer_layout = FloatLayout()
-        
-        # Main content layout
+
+        # Main content layout - generous padding for breathing room
         layout = BoxLayout(
-            orientation='vertical', 
-            padding="20dp", 
-            spacing="15dp",
+            orientation='vertical',
+            padding=("25dp", "40dp", "25dp", "25dp"),  # More top padding
+            spacing="8dp",
             size_hint=(1, 1)
         )
-        
-        # Header with logo/title
+
+        # Minimal header
         header = MDLabel(
-            text="MoniToni Vending",
+            text="MONITONI",
             halign='center',
-            font_style='H3',
+            font_style='H4',
             size_hint=(1, None),
-            height="80dp"
+            height="50dp",
+            theme_text_color='Custom',
+            text_color=(1, 1, 1, 0.9)
         )
         layout.add_widget(header)
-        
-        # Status card
+
+        # Status - subtle instruction
         self.status_card = StatusCard()
         layout.add_widget(self.status_card)
-        
+
+        # Generous spacing before turn button
+        from kivy.uix.widget import Widget
+        spacer1 = Widget(size_hint=(1, None), height="20dp")
+        layout.add_widget(spacer1)
+
+        # Turn button (large, bold, prominent)
+        self.turn_button = TurnButton(
+            hardware=self.hardware,
+            config=self.app_config,
+            logger=self.logger
+        )
+        layout.add_widget(self.turn_button)
+
+        # Spacing before level buttons
+        spacer2 = Widget(size_hint=(1, None), height="25dp")
+        layout.add_widget(spacer2)
+
+        # Level label
+        level_label = MDLabel(
+            text="FACH",
+            halign='center',
+            font_style='Caption',
+            size_hint=(1, None),
+            height="25dp",
+            theme_text_color='Custom',
+            text_color=(1, 1, 1, 0.4)
+        )
+        layout.add_widget(level_label)
+
         # Scrollable product buttons (vertical stack)
         scroll = ScrollView(size_hint=(1, 1))
-        
+
         button_container = BoxLayout(
             orientation='vertical',
-            spacing="12dp",
+            spacing="8dp",
             size_hint_y=None,
-            padding=("0dp", "10dp")
+            padding=("0dp", "5dp")
         )
         button_container.bind(minimum_height=button_container.setter('height'))
         
@@ -527,15 +562,7 @@ class CustomerScreen(Screen):
             
         scroll.add_widget(button_container)
         layout.add_widget(scroll)
-        
-        # Add turn button at bottom
-        self.turn_button = TurnButton(
-            hardware=self.hardware,
-            config=self.app_config,
-            logger=self.logger
-        )
-        layout.add_widget(self.turn_button)
-        
+
         outer_layout.add_widget(layout)
         
         # Subtle debug indicator triangle in corner

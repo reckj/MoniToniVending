@@ -73,6 +73,8 @@ class VendingApp(MDApp):
             Window.fullscreen = 'auto'
         else:
             Window.size = (self.app_config.ui.screen_width, self.app_config.ui.screen_height)
+            Window.top = 50  # Position near top of screen
+            Window.left = 50  # Position near left edge
             
         # Create screen manager
         self.screen_manager = ScreenManager(transition=FadeTransition())
