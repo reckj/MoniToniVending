@@ -2,13 +2,13 @@
 Debug and setup screen for hardware testing and configuration.
 
 PIN-protected interface for operators and maintenance.
-Uses simple scrollable sections instead of expansion panels to avoid overlap issues.
+Uses nested ScreenManager for sub-screen navigation.
 """
 
 import asyncio
 import yaml
 from pathlib import Path
-from kivy.uix.screenmanager import Screen
+from kivy.uix.screenmanager import Screen, ScreenManager, SlideTransition
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
@@ -25,6 +25,7 @@ from kivymd.uix.card import MDCard
 from monitoni.core.config import Config
 from monitoni.core.logger import Logger
 from monitoni.hardware.manager import HardwareManager
+from monitoni.ui.debug_screens import BaseDebugSubScreen, DebugMenuScreen
 
 # Register icon font
 from monitoni.ui.icons import register_icon_font, get_icon
@@ -423,83 +424,62 @@ class DebugScreen(Screen):
         self._build_ui()
         
     def _build_ui(self):
-        """Build the debug UI with scrollable sections."""
-        # Main layout
-        main_layout = BoxLayout(orientation='vertical', padding="10dp", spacing="10dp")
-        
-        # Header with back button
-        header = BoxLayout(size_hint=(1, None), height="60dp", spacing="10dp")
-        
-        back_btn = MDRaisedButton(
-            text="< Back",
-            size_hint=(None, None),
-            size=("100dp", "50dp"),
-            on_release=lambda x: self.app.switch_to_customer()
+        """Build the debug UI with nested ScreenManager for sub-screen navigation."""
+        # Create nested ScreenManager with SlideTransition for hardware performance
+        self.sub_screen_manager = ScreenManager(
+            transition=SlideTransition(direction='left')
         )
-        header.add_widget(back_btn)
-        
-        title = MDLabel(
-            text="Debug & Setup",
-            font_style='H5',
-            valign='center'
+
+        # Create and add menu screen
+        menu_screen = DebugMenuScreen(
+            name='menu',
+            navigate_callback=self.navigate_to,
+            back_to_customer_callback=self.app.switch_to_customer
         )
-        header.add_widget(title)
-        
-        # Save button
-        save_btn = MDRaisedButton(
-            text="Save",
-            size_hint=(None, None),
-            size=("100dp", "50dp"),
-            md_bg_color=(0.2, 0.6, 0.2, 1),  # Green
-            on_release=lambda x: asyncio.create_task(self._save_config())
-        )
-        header.add_widget(save_btn)
-        
-        main_layout.add_widget(header)
-        
-        # Scrollable content
-        scroll = ScrollView(size_hint=(1, 1))
-        
-        content = BoxLayout(
-            orientation='vertical',
-            spacing="15dp",
-            size_hint_y=None,
-            padding=("5dp", "10dp")
-        )
-        content.bind(minimum_height=content.setter('height'))
-        
-        # Audio Section
-        audio_section = self._create_audio_section()
-        content.add_widget(audio_section)
-        
-        # LED Section
-        led_section = self._create_led_section()
-        content.add_widget(led_section)
-        
-        # LED Zone Mapping Section
-        zone_section = self._create_zone_section()
-        content.add_widget(zone_section)
-        
-        # Relay Section
-        relay_section = self._create_relay_section()
-        content.add_widget(relay_section)
-        
-        # Sensor Section
-        sensor_section = self._create_sensor_section()
-        content.add_widget(sensor_section)
-        
-        # Statistics Section
-        stats_section = self._create_stats_section()
-        content.add_widget(stats_section)
-        
-        # Logs Section
-        logs_section = self._create_logs_section()
-        content.add_widget(logs_section)
-        
-        scroll.add_widget(content)
-        main_layout.add_widget(scroll)
-        
-        self.add_widget(main_layout)
+        self.sub_screen_manager.add_widget(menu_screen)
+
+        # Create placeholder sub-screens for each category
+        # Sub-screen definitions: (name, title, placeholder_text)
+        sub_screens = [
+            ('led', 'LED Control', 'LED controls will be migrated here in Phase 2'),
+            ('relay', 'Relay Control', 'Relay controls will be migrated here in Phase 2'),
+            ('sensor', 'Sensors', 'Sensor display will be migrated here in Phase 2'),
+            ('audio', 'Audio', 'Audio controls will be migrated here in Phase 2'),
+            ('motor', 'Motor Settings', 'Motor settings will be migrated here in Phase 2'),
+            ('network', 'Network/Server', 'Network settings will be migrated here in Phase 2'),
+            ('stats', 'Statistics & Logs', 'Statistics and logs will be migrated here in Phase 2'),
+        ]
+
+        for screen_name, title, placeholder_text in sub_screens:
+            sub_screen = BaseDebugSubScreen(
+                name=screen_name,
+                title=title,
+                navigate_back=self.navigate_back
+            )
+            # Add placeholder content
+            sub_screen.add_content(MDLabel(
+                text=placeholder_text,
+                halign='center',
+                size_hint=(1, None),
+                height="50dp"
+            ))
+            self.sub_screen_manager.add_widget(sub_screen)
+
+        # Set menu as default screen
+        self.sub_screen_manager.current = 'menu'
+
+        # Add ScreenManager to this screen
+        self.add_widget(self.sub_screen_manager)
+
+    def navigate_to(self, screen_name: str):
+        """Navigate to a sub-screen."""
+        self.sub_screen_manager.transition.direction = 'left'
+        self.sub_screen_manager.current = screen_name
+
+    def navigate_back(self):
+        """Return to menu."""
+        self.sub_screen_manager.transition.direction = 'right'
+        self.sub_screen_manager.current = 'menu'
         
     def _create_audio_section(self):
         """Create audio control section."""
