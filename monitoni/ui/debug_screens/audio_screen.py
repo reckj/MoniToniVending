@@ -135,9 +135,13 @@ class AudioSettingsScreen(BaseDebugSubScreen):
         toggle_row.add_widget(toggle_label)
 
         audio_toggle = MDSwitch(
-            active=self.config_manager.config.hardware.audio.enabled,
             size_hint_x=0.3
         )
+        # Set active after construction to avoid KivyMD 1.2 on_active crash
+        # (self.ids.thumb doesn't exist during __init__)
+        from kivy.clock import Clock
+        initial_active = self.config_manager.config.hardware.audio.enabled
+        Clock.schedule_once(lambda dt: setattr(audio_toggle, 'active', initial_active))
         audio_toggle.bind(active=self._on_audio_enabled_changed)
         toggle_row.add_widget(audio_toggle)
 

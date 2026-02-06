@@ -168,9 +168,13 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
         toggle_row.add_widget(toggle_label)
 
         server_toggle = MDSwitch(
-            active=self.config_manager.config.purchase_server.enabled,
             size_hint_x=0.3
         )
+        # Set active after construction to avoid KivyMD 1.2 on_active crash
+        # (self.ids.thumb doesn't exist during __init__)
+        from kivy.clock import Clock
+        initial_active = self.config_manager.config.purchase_server.enabled
+        Clock.schedule_once(lambda dt: setattr(server_toggle, 'active', initial_active))
         server_toggle.bind(active=self._on_server_enabled_changed)
         toggle_row.add_widget(server_toggle)
 
