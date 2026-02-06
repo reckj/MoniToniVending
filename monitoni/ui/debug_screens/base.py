@@ -11,6 +11,8 @@ from kivy.properties import StringProperty
 from kivymd.uix.label import MDLabel
 from kivymd.uix.button import MDRaisedButton
 
+from monitoni.ui.debug_screens.widgets import CORAL_ACCENT
+
 
 class BaseDebugSubScreen(Screen):
     """
@@ -57,7 +59,8 @@ class BaseDebugSubScreen(Screen):
         back_btn = MDRaisedButton(
             text="< Back",
             size_hint=(None, None),
-            size=("100dp", "50dp"),
+            size=("80dp", "50dp"),
+            md_bg_color=CORAL_ACCENT,
             on_release=self._on_back_pressed
         )
         header.add_widget(back_btn)
@@ -65,8 +68,12 @@ class BaseDebugSubScreen(Screen):
         title_label = MDLabel(
             text=self.title,
             font_style='H5',
-            valign='center'
+            halign='center',
+            valign='center',
+            size_hint_y=None,
+            height="50dp"
         )
+        title_label.bind(size=title_label.setter('text_size'))
         # Bind title property to label text for dynamic updates
         self.bind(title=title_label.setter('text'))
         header.add_widget(title_label)

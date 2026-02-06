@@ -122,16 +122,24 @@ class StatsSettingsScreen(BaseDebugSubScreen):
         """Build log viewer card with filtering."""
         card = SettingsCard(title="Logs")
 
-        # Filter buttons row
-        filter_row = GridLayout(
-            cols=5,
-            spacing="5dp",
+        # Filter buttons - 2 rows to fit 400px screen
+        filter_row1 = BoxLayout(
+            orientation='horizontal',
             size_hint_y=None,
-            height="50dp"
+            height="45dp",
+            spacing="5dp"
+        )
+        filter_row2 = BoxLayout(
+            orientation='horizontal',
+            size_hint_y=None,
+            height="45dp",
+            spacing="5dp"
         )
 
-        filters = ["ALL", "DEBUG", "INFO", "WARNING", "ERROR"]
-        for filter_name in filters:
+        filters_row1 = ["ALL", "INFO", "DEBUG"]
+        filters_row2 = ["WARNING", "ERROR"]
+
+        for filter_name in filters_row1:
             btn = MDRaisedButton(
                 text=filter_name,
                 size_hint=(1, 1),
@@ -139,9 +147,20 @@ class StatsSettingsScreen(BaseDebugSubScreen):
                 on_release=lambda x, f=filter_name: self._on_filter_changed(f)
             )
             self.filter_buttons[filter_name] = btn
-            filter_row.add_widget(btn)
+            filter_row1.add_widget(btn)
 
-        card.add_content(filter_row)
+        for filter_name in filters_row2:
+            btn = MDRaisedButton(
+                text=filter_name,
+                size_hint=(1, 1),
+                md_bg_color=NEAR_BLACK,
+                on_release=lambda x, f=filter_name: self._on_filter_changed(f)
+            )
+            self.filter_buttons[filter_name] = btn
+            filter_row2.add_widget(btn)
+
+        card.add_content(filter_row1)
+        card.add_content(filter_row2)
 
         # Scrollable log list
         scroll = ScrollView(

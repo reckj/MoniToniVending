@@ -111,7 +111,7 @@ class NumpadDialog:
             '7', '8', '9',
             '4', '5', '6',
             '1', '2', '3',
-            '.' if self.allow_decimal else '', '0', '⌫'
+            '.' if self.allow_decimal else '', '0', 'DEL'
         ]
 
         for btn_text in buttons:
@@ -120,7 +120,7 @@ class NumpadDialog:
                 numpad_grid.add_widget(BoxLayout())
             else:
                 # Backspace button in red, others in dark gray
-                bg_color = ERROR_RED if btn_text == '⌫' else NEAR_BLACK
+                bg_color = ERROR_RED if btn_text == 'DEL' else NEAR_BLACK
                 btn = MDRaisedButton(
                     text=btn_text,
                     md_bg_color=bg_color,
@@ -151,7 +151,7 @@ class NumpadDialog:
 
     def _on_key_press(self, key: str):
         """Handle numpad key press."""
-        if key == '⌫':
+        if key == 'DEL':
             # Backspace: remove last digit
             if len(self.current_value) > 1:
                 self.current_value = self.current_value[:-1]
@@ -460,7 +460,7 @@ class HoldButton(MDRaisedButton):
         self.on_hold = on_hold
         self.on_release_hold = on_release_hold
         self._holding = False
-        self._original_color = self.md_bg_color
+        self._original_color = self.md_bg_color or NEAR_BLACK
 
     def on_touch_down(self, touch):
         """Handle touch down event."""
@@ -473,7 +473,7 @@ class HoldButton(MDRaisedButton):
             self._holding = True
 
             # Visual feedback: change to coral
-            self._original_color = self.md_bg_color
+            self._original_color = self.md_bg_color or NEAR_BLACK
             self.md_bg_color = CORAL_ACCENT
 
             # Invoke hold callback

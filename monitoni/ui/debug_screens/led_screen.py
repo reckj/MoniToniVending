@@ -140,7 +140,7 @@ class LEDSettingsScreen(BaseDebugSubScreen):
             current_brightness = self.config_manager.config.led.animations.get('idle', {}).get('brightness', 0.8)
         except:
             current_brightness = 0.8
-        brightness_pct = int(current_brightness * 100)
+        brightness_pct = min(100, int(current_brightness * 100))
 
         self.brightness_value_label = MDLabel(
             text=f"{brightness_pct}%",

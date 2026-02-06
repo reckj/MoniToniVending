@@ -79,7 +79,7 @@ class TurnButton(MDRaisedButton):
         self.config = config
         self.logger = logger
         
-        self.text = "DREHEN"
+        self.text = "TURN"
         self.size_hint = (1, None)
         self.height = "600dp"
         self.font_size = "64sp"
@@ -151,8 +151,8 @@ class TurnButton(MDRaisedButton):
             
         self._is_turning = False
         self.md_bg_color = (0.95, 0.25, 0.2, 1)  # Back to coral
-        self.text = "DREHEN"
-        
+        self.text = "TURN"
+
         # Stop motor sequence in background
         import threading
         
@@ -195,7 +195,7 @@ class TurnButton(MDRaisedButton):
 class StatusCard(MDCard):
     """Card displaying current status."""
 
-    status_text = StringProperty("Wähle ein Fach")
+    status_text = StringProperty("Select a level")
 
     def __init__(self, **kwargs):
         """Initialize status card."""
@@ -209,11 +209,11 @@ class StatusCard(MDCard):
         self.radius = [0, 0, 0, 0]  # No radius
         self.elevation = 0
 
-        # Status label - minimal, lowercase
+        # Status label - readable size for touchscreen
         self.status_label = MDLabel(
             text=self.status_text,
             halign='center',
-            font_style='Body1',
+            font_style='H6',
             theme_text_color='Custom',
             text_color=(1, 1, 1, 0.6)  # Subtle white
         )
@@ -531,7 +531,7 @@ class CustomerScreen(Screen):
 
         # Level label
         level_label = MDLabel(
-            text="FACH",
+            text="LEVEL",
             halign='center',
             font_style='Caption',
             size_hint=(1, None),

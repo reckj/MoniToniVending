@@ -7,7 +7,7 @@ Uses nested ScreenManager for sub-screen navigation.
 
 import asyncio
 from pathlib import Path
-from kivy.uix.screenmanager import Screen, ScreenManager, SlideTransition
+from kivy.uix.screenmanager import Screen, ScreenManager, NoTransition
 from kivy.uix.boxlayout import BoxLayout
 from kivy.properties import StringProperty
 from kivymd.uix.label import MDLabel
@@ -314,9 +314,9 @@ class DebugScreen(Screen):
         
     def _build_ui(self):
         """Build the debug UI with nested ScreenManager for sub-screen navigation."""
-        # Create nested ScreenManager with SlideTransition for hardware performance
+        # Create nested ScreenManager with NoTransition to avoid touch-handling bugs
         self.sub_screen_manager = ScreenManager(
-            transition=SlideTransition(direction='left')
+            transition=NoTransition()
         )
 
         # Create and add menu screen
@@ -357,18 +357,20 @@ class DebugScreen(Screen):
 
     def navigate_to(self, screen_name: str):
         """Navigate to a sub-screen."""
-        self.sub_screen_manager.transition.direction = 'left'
         self.sub_screen_manager.current = screen_name
 
     def navigate_back(self):
         """Return to menu."""
-        self.sub_screen_manager.transition.direction = 'right'
         self.sub_screen_manager.current = 'menu'
+
     def on_enter(self):
-        """Called when screen is entered."""
-        # Always require PIN when entering debug screen
+        """Called when screen is entered - show PIN if not yet authenticated."""
+        if not self._authenticated:
+            self._show_pin_dialog()
+
+    def on_leave(self):
+        """Called when leaving debug screen - reset authentication."""
         self._authenticated = False
-        self._show_pin_dialog()
             
     def _show_pin_dialog(self):
         """Show PIN entry dialog."""

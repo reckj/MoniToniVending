@@ -26,6 +26,7 @@ from monitoni.ui.debug_screens.base import BaseDebugSubScreen
 from monitoni.ui.debug_screens.widgets import (
     SettingsCard,
     NumpadField,
+    NumpadDialog,
     TextInputDialog,
     update_config_value,
     reset_section_to_defaults,
@@ -112,12 +113,28 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
         )
         card.add_content(url_row)
 
-        # Machine ID (tappable text field)
-        machine_id_row = self._build_text_field_row(
-            label="Machine ID",
-            config_path="system.machine_id",
-            hint="VM001"
+        # Machine ID (Vending-XXX format with numpad)
+        machine_id_row = BoxLayout(
+            orientation='horizontal',
+            size_hint_y=None,
+            height="50dp",
+            spacing="10dp"
         )
+        machine_id_label = MDLabel(
+            text="Machine ID",
+            size_hint_x=0.4,
+            font_style='Body1'
+        )
+        machine_id_row.add_widget(machine_id_label)
+
+        current_machine_id = self.config_manager.config.system.machine_id
+        self.machine_id_button = MDRaisedButton(
+            text=current_machine_id,
+            size_hint_x=0.6,
+            md_bg_color=INPUT_BUTTON,
+            on_release=lambda x: self._open_machine_id_numpad()
+        )
+        machine_id_row.add_widget(self.machine_id_button)
         card.add_content(machine_id_row)
 
         # Poll interval (numeric)
@@ -396,6 +413,36 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
 
         # Update button display
         button.text = value
+
+    def _open_machine_id_numpad(self):
+        """Open numpad dialog for Machine ID (Vending-001 to Vending-999)."""
+        # Extract current number from machine ID
+        current_id = self.config_manager.config.system.machine_id
+        current_num = 1
+        # Try to parse number from existing formats like "Vending-042" or "VM001"
+        import re
+        match = re.search(r'(\d+)', current_id)
+        if match:
+            current_num = int(match.group(1))
+
+        dialog = NumpadDialog(
+            title="Machine ID (001-999)",
+            initial_value=float(current_num),
+            min_value=1,
+            max_value=999,
+            allow_decimal=False,
+            on_submit=self._on_machine_id_submitted
+        )
+        dialog.open()
+
+    def _on_machine_id_submitted(self, value: float):
+        """Handle machine ID numpad submission."""
+        num = int(value)
+        num = max(1, min(999, num))
+        machine_id = f"Vending-{num:03d}"
+
+        update_config_value(self.config_manager, "system.machine_id", machine_id)
+        self.machine_id_button.text = machine_id
 
     def _on_server_enabled_changed(self, instance, value: bool):
         """Handle server enabled toggle change."""
