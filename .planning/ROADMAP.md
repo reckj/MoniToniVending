@@ -32,6 +32,15 @@ Plans:
 ### Phase 2: Settings Sub-screens
 **Goal:** Build dedicated settings screens for each hardware component with full configurability
 
+**Plans:** 5 plans
+
+Plans:
+- [ ] 02-01-PLAN.md - Shared widgets (NumpadDialog, HoldButton, LiveStatusCard, SettingsCard, config helpers)
+- [ ] 02-02-PLAN.md - Relay and Motor settings screens
+- [ ] 02-03-PLAN.md - LED and Sensor settings screens
+- [ ] 02-04-PLAN.md - Audio and Network settings screens
+- [ ] 02-05-PLAN.md - Stats & Logs screen + integration into DebugScreen
+
 **Delivers:**
 - LED sub-screen: brightness, colors, animations, zone mapping with test tools
 - Relay sub-screen: channel mapping, test individual/cascade, door lock config
@@ -122,8 +131,8 @@ Phase 1 (Architecture)
 
 | Phase | Status | Plans | Notes |
 |-------|--------|-------|-------|
-| 1. Debug Screen Architecture | Planned | 0/2 | Ready to execute |
-| 2. Settings Sub-screens | Not Started | 0/0 | |
+| 1. Debug Screen Architecture | Complete ✓ | 2/2 | Verified 2026-02-06 |
+| 2. Settings Sub-screens | Planned | 0/5 | 5 plans in 3 waves |
 | 3. Setup Wizard | Not Started | 0/0 | |
 | 4. Maintenance Features | Not Started | 0/0 | |
 | 5. UI Polish & Hardware Testing | Not Started | 0/0 | |
