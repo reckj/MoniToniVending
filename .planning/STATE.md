@@ -8,9 +8,9 @@
 ## Current Position
 
 - **Phase:** 2 of 5 - Settings Sub-screens
-- **Plan:** 4 of 5 - Just completed 02-04-PLAN.md
+- **Plan:** 4 of 5 - Just completed 02-03-PLAN.md
 - **Status:** In progress
-- **Last activity:** 2026-02-06 - Completed 02-04-PLAN.md (Audio and Network Settings)
+- **Last activity:** 2026-02-06 - Completed 02-03-PLAN.md (LED and Sensor Settings)
 
 ## Progress
 
@@ -28,6 +28,10 @@ Overall: [======....] ~50%
 
 | Decision | Date | Phase-Plan |
 |----------|------|------------|
+| Clock.schedule_interval for 200ms sensor polling (need sync callback) | 2026-02-06 | 02-03 |
+| LED brightness stored in led.animations.idle.brightness path | 2026-02-06 | 02-03 |
+| Zone mapping uses direct pixel range (start/end) editable per-level | 2026-02-06 | 02-03 |
+| Sensor door status prominently displayed with H3 font and color-coded background | 2026-02-06 | 02-03 |
 | Network status auto-refreshes every 5s with Clock.schedule_interval | 2026-02-06 | 02-04 |
 | Telemetry PIN masked by default with reveal/hide toggle button | 2026-02-06 | 02-04 |
 | IP address detection tries socket connection test first, hostname fallback | 2026-02-06 | 02-04 |
@@ -57,7 +61,7 @@ None identified.
 
 ## Session Continuity
 
-Last session: 2026-02-06 15:54
-Stopped at: Completed 02-04-PLAN.md (Audio and Network Settings)
+Last session: 2026-02-06 14:54
+Stopped at: Completed 02-03-PLAN.md (LED and Sensor Settings)
 Resume file: None
-Next: Execute 02-05-PLAN.md (Debug Menu Screen integration)
+Next: Execute 02-05-PLAN.md (final settings screen)
