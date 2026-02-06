@@ -12,8 +12,8 @@ Make the Kivy touchscreen UI and hardware integration solid and bug-free. Machin
 **Plans:** 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md - Create debug_screens package with BaseDebugSubScreen and DebugMenuScreen
-- [ ] 01-02-PLAN.md - Refactor DebugScreen to use nested ScreenManager
+- [x] 01-01-PLAN.md - Create debug_screens package with BaseDebugSubScreen and DebugMenuScreen
+- [x] 01-02-PLAN.md - Refactor DebugScreen to use nested ScreenManager
 
 **Delivers:**
 - Navigation menu replacing current single-scroll debug screen
@@ -35,7 +35,7 @@ Plans:
 **Plans:** 5 plans
 
 Plans:
-- [ ] 02-01-PLAN.md - Shared widgets (NumpadDialog, HoldButton, LiveStatusCard, SettingsCard, config helpers)
+- [x] 02-01-PLAN.md - Shared widgets (NumpadDialog, HoldButton, LiveStatusCard, SettingsCard, config helpers)
 - [ ] 02-02-PLAN.md - Relay and Motor settings screens
 - [ ] 02-03-PLAN.md - LED and Sensor settings screens
 - [ ] 02-04-PLAN.md - Audio and Network settings screens
@@ -132,7 +132,7 @@ Phase 1 (Architecture)
 | Phase | Status | Plans | Notes |
 |-------|--------|-------|-------|
 | 1. Debug Screen Architecture | Complete ✓ | 2/2 | Verified 2026-02-06 |
-| 2. Settings Sub-screens | Planned | 0/5 | 5 plans in 3 waves |
+| 2. Settings Sub-screens | In Progress | 1/5 | Shared widget library complete |
 | 3. Setup Wizard | Not Started | 0/0 | |
 | 4. Maintenance Features | Not Started | 0/0 | |
 | 5. UI Polish & Hardware Testing | Not Started | 0/0 | |
