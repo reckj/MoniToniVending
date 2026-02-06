@@ -6,6 +6,8 @@ system:
   name: "MoniToni Vending Machine"
   version: "1.0.0"
   machine_id: "VM001"  # Override in local.yaml
+  maintenance_mode: false  # Blocks purchases when true
+  maintenance_message: "Maschine wird gewartet"  # Shown to customers
 
 # Hardware Settings
 hardware:
