@@ -86,6 +86,12 @@ Plans:
 ### Phase 4: Maintenance Features
 **Goal:** Enable operators to manage machine without web frontend
 
+**Plans:** 2 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — QR Management Screen (generate, upload, preview, delete QR codes)
+- [ ] 04-02-PLAN.md — Maintenance Mode + Integration (toggle, status display, customer screen check, debug menu wiring)
+
 **Delivers:**
 - QR code management screen:
   - Generate QR from payment link URL
@@ -141,5 +147,5 @@ Phase 1 (Architecture)
 | 1. Debug Screen Architecture | Complete ✓ | 2/2 | Verified 2026-02-06 |
 | 2. Settings Sub-screens | In Progress | 1/5 | Shared widget library complete |
 | 3. Setup Wizard | Planned | 0/3 | 3 plans in 3 waves |
-| 4. Maintenance Features | Not Started | 0/0 | |
+| 4. Maintenance Features | Planned | 0/2 | 2 plans in 2 waves |
 | 5. UI Polish & Hardware Testing | Not Started | 0/0 | |
