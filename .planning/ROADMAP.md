@@ -61,12 +61,19 @@ Plans:
 ### Phase 3: Setup Wizard
 **Goal:** First-time configuration flow for new machine deployment
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Wizard infrastructure (coordinator, header, base step, dialog, utilities)
+- [ ] 03-02-PLAN.md — Wizard steps (Hardware, LED, Relay Map, Sensor, Server, Completion)
+- [ ] 03-03-PLAN.md — App integration (first-run detection, ScreenManager wiring, debug menu re-run)
+
 **Delivers:**
 - Wizard entry point (detect first run or manual trigger)
 - Step-by-step flow: Hardware -> LED -> Relay -> Sensors -> Server
 - Each step uses components from Phase 2 sub-screens
 - Skip/back navigation
-- Completion confirmation with test option
+- Completion confirmation with atomic config save
 
 **Success Criteria:**
 - New machine can be fully configured without editing config files
@@ -133,6 +140,6 @@ Phase 1 (Architecture)
 |-------|--------|-------|-------|
 | 1. Debug Screen Architecture | Complete ✓ | 2/2 | Verified 2026-02-06 |
 | 2. Settings Sub-screens | In Progress | 1/5 | Shared widget library complete |
-| 3. Setup Wizard | Not Started | 0/0 | |
+| 3. Setup Wizard | Planned | 0/3 | 3 plans in 3 waves |
 | 4. Maintenance Features | Not Started | 0/0 | |
 | 5. UI Polish & Hardware Testing | Not Started | 0/0 | |
