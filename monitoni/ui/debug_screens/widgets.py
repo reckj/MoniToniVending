@@ -785,3 +785,83 @@ class NumpadField(BoxLayout):
         # Invoke callback if provided
         if self.on_value_changed:
             self.on_value_changed(new_value)
+
+
+class TextInputDialog:
+    """
+    Modal dialog with text input field.
+
+    Used for string inputs like URLs, machine IDs, IP addresses.
+    """
+
+    def __init__(
+        self,
+        title: str,
+        initial_value: str = "",
+        hint_text: str = "",
+        on_submit: Optional[Callable[[str], None]] = None
+    ):
+        """
+        Initialize text input dialog.
+
+        Args:
+            title: Dialog title text
+            initial_value: Starting value to display
+            hint_text: Placeholder hint text
+            on_submit: Callback invoked with string value on OK
+        """
+        self.title = title
+        self.initial_value = initial_value
+        self.hint_text = hint_text
+        self.on_submit = on_submit
+
+        # Import here to avoid circular dependencies
+        from kivymd.uix.textfield import MDTextField
+
+        # Build dialog UI
+        self._build_ui()
+
+    def _build_ui(self):
+        """Build the text input dialog UI."""
+        from kivymd.uix.textfield import MDTextField
+
+        # Text field for input
+        self.text_field = MDTextField(
+            text=self.initial_value,
+            hint_text=self.hint_text,
+            size_hint_y=None,
+            height="50dp",
+            multiline=False
+        )
+
+        # Create dialog with action buttons
+        self.dialog = MDDialog(
+            title=self.title,
+            type="custom",
+            content_cls=self.text_field,
+            buttons=[
+                MDFlatButton(
+                    text="ABBRECHEN",
+                    on_release=lambda x: self.dialog.dismiss()
+                ),
+                MDRaisedButton(
+                    text="OK",
+                    md_bg_color=CORAL_ACCENT,
+                    on_release=lambda x: self._on_ok_pressed()
+                ),
+            ],
+        )
+
+    def _on_ok_pressed(self):
+        """Handle OK button press."""
+        value = self.text_field.text.strip()
+
+        # Invoke callback with value
+        if self.on_submit:
+            self.on_submit(value)
+
+        self.dialog.dismiss()
+
+    def open(self):
+        """Open the dialog."""
+        self.dialog.open()
