@@ -35,7 +35,7 @@ Overall: [=.........] ~5%
 
 ## Pending Todos
 
-None captured yet.
+1. **Create design system for centralized UI styling** (ui) — 2026-02-06
 
 ## Blockers/Concerns
 
