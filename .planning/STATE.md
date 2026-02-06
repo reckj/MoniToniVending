@@ -58,6 +58,7 @@ Overall: [======....] ~52%
 
 1. **Create design system for centralized UI styling** (ui) — 2026-02-06
 2. **Create local chatbot webapp for setup & maintenance help** (tooling) — 2026-02-06
+3. **Fix motor asyncio lock bound to different event loop** (hardware) — 2026-02-06
 
 ## Blockers/Concerns
 
