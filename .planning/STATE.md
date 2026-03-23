@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: milestone
-status: Planned, pending execution
-stopped_at: Completed 02.1-01-PLAN.md — foundation layer (modbus_utils, TCP relay, DI controller, config models)
-last_updated: "2026-03-23T18:52:53.784Z"
-last_activity: 2026-03-23 - Inserted Phase 02.1 for hardware migration
+status: executing
+stopped_at: Completed 02.1-02-PLAN.md — HardwareManager dual relay routing
+last_updated: "2026-03-23T18:57:43.719Z"
+last_activity: "2026-03-23 - Executed 02.1-01: Modbus TCP transport foundation"
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 16
-  completed_plans: 8
+  completed_plans: 9
 ---
 
 # MoniToniVending - Project State
@@ -23,16 +23,16 @@ progress:
 ## Current Position
 
 - **Phase:** 02.1 - Dual Ethernet Relay Migration (INSERTED)
-- **Plan:** 02.1-01 complete, 3 remaining (plans 02-04)
-- **Status:** In progress — plan 01 complete
-- **Last activity:** 2026-03-23 - Executed 02.1-01: Modbus TCP transport foundation
+- **Plan:** 02.1-02 complete, 2 remaining (plans 03-04)
+- **Status:** In progress — plans 01-02 complete
+- **Last activity:** 2026-03-23 - Executed 02.1-02: HardwareManager dual relay routing
 
 ## Progress
 
 ```
 Phase 1: Debug Screen Architecture  [==========] Complete ✓
 Phase 2: Settings Sub-screens       [========  ] 1/5 plans (20%)
-Phase 02.1: Dual Ethernet Relay     [==        ] 1/4 plans (25%)
+Phase 02.1: Dual Ethernet Relay     [====      ] 2/4 plans (50%)
 Phase 3: Setup Wizard               [          ] Not Started
 Phase 4: Maintenance Features       [==========] Complete ✓
 Phase 5: UI Polish & Hardware Test  [          ] Not Started
@@ -56,6 +56,10 @@ Overall: [=====.....] ~50%
 | Full-screen MaintenanceDisplayScreen replaces customer screen entirely | 2026-03-23 | 04-02 |
 | App routing consolidated through _go_to_customer_or_maintenance() | 2026-03-23 | 04-02 |
 | bind(active=callback) is the reliable MDSwitch pattern in KivyMD 1.2.0 | 2026-03-23 | 04-02 |
+| Motor/spindle routes to relay_core (8-CH), door locks route to relay_levels (30-CH) | 2026-03-23 | 02.1-02 |
+| DI sensor host/port taken from relay_core config (same physical device) | 2026-03-23 | 02.1-02 |
+| relay_levels absent config creates MockRelayController (not an error — module may not be wired yet) | 2026-03-23 | 02.1-02 |
+| self.relay backward-compat property returns relay_core to avoid breaking callers | 2026-03-23 | 02.1-02 |
 
 ## Pending Todos
 
@@ -74,7 +78,7 @@ Overall: [=====.....] ~50%
 
 ## Session Continuity
 
-Last session: 2026-03-23T18:52:53.776Z
-Stopped at: Completed 02.1-01-PLAN.md — foundation layer (modbus_utils, TCP relay, DI controller, config models)
+Last session: 2026-03-23T18:57:43.714Z
+Stopped at: Completed 02.1-02-PLAN.md — HardwareManager dual relay routing
 Resume file: None
 Next: /gsd:execute-phase 02.1
