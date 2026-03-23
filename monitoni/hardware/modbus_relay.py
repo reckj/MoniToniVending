@@ -10,19 +10,7 @@ from typing import Optional, Dict
 import serial
 
 from monitoni.hardware.base import RelayController, HardwareStatus
-
-
-def modbus_crc(data: bytes) -> int:
-    """Calculate Modbus CRC16."""
-    crc = 0xFFFF
-    for byte in data:
-        crc ^= byte
-        for _ in range(8):
-            if crc & 0x0001:
-                crc = (crc >> 1) ^ 0xA001
-            else:
-                crc >>= 1
-    return crc
+from monitoni.hardware.modbus_utils import modbus_crc  # noqa: F401 (re-exported for legacy callers)
 
 
 class ModbusRelayController(RelayController):
