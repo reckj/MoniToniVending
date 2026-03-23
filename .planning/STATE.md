@@ -7,35 +7,35 @@
 
 ## Current Position
 
-- **Phase:** 4 of 5 - Maintenance Features (COMPLETE)
-- **Plan:** 2 of 2 - Complete
-- **Status:** Phase 4 complete, Phase 5 not yet planned
-- **Last activity:** 2026-03-23 - Closed out Phase 4 (commit + summary)
+- **Phase:** 02.1 - Dual Ethernet Relay Migration (INSERTED)
+- **Plan:** Not yet planned
+- **Status:** Phase inserted, needs planning
+- **Last activity:** 2026-03-23 - Inserted Phase 02.1 for hardware migration
 
 ## Progress
 
 ```
 Phase 1: Debug Screen Architecture  [==========] Complete ✓
-Phase 2: Settings Sub-screens       [========  ] 4/5 plans (80%)
+Phase 2: Settings Sub-screens       [========  ] 1/5 plans (20%)
+Phase 02.1: Dual Ethernet Relay     [          ] Not Started (INSERTED)
 Phase 3: Setup Wizard               [          ] Not Started
 Phase 4: Maintenance Features       [==========] Complete ✓
 Phase 5: UI Polish & Hardware Test  [          ] Not Started
 
-Overall: [=======...] ~60%
+Overall: [=====.....] ~50%
 ```
 
 ## Recent Decisions
 
 | Decision | Date | Phase-Plan |
 |----------|------|------------|
+| Insert Phase 02.1 for dual Ethernet relay hardware migration | 2026-03-23 | 02.1 |
+| Keep RS485 serial as fallback transport option | 2026-03-23 | 02.1 |
+| 30-CH module for levels, 8-CH Module C for core + digital inputs | 2026-03-23 | 02.1 |
+| Door sensor moves from GPIO to 8-CH digital input (Modbus func 0x02) | 2026-03-23 | 02.1 |
 | Full-screen MaintenanceDisplayScreen replaces customer screen entirely | 2026-03-23 | 04-02 |
 | App routing consolidated through _go_to_customer_or_maintenance() | 2026-03-23 | 04-02 |
 | bind(active=callback) is the reliable MDSwitch pattern in KivyMD 1.2.0 | 2026-03-23 | 04-02 |
-| MDSwitch alignment deferred to design system overhaul | 2026-03-23 | 04-02 |
-| NumpadDialog over NumpadField for transient level selection | 2026-02-06 | 04-01 |
-| ERROR_CORRECT_M (15%) for QR code generation | 2026-02-06 | 04-01 |
-| Image reload via source clearing and Clock.schedule_once | 2026-02-06 | 04-01 |
-| Custom QR precedence pattern (custom_level_N.png > level_N.png) | 2026-02-06 | 04-01 |
 
 ## Pending Todos
 
@@ -48,9 +48,13 @@ Overall: [=======...] ~60%
 
 - MDSwitch thumb slightly overflows card border (cosmetic, deferred to Phase 5 / design overhaul)
 
+## Roadmap Evolution
+
+- Phase 02.1 inserted after Phase 2: Dual Ethernet Relay Migration (URGENT) — hardware changed from single RS485 relay + GPIO to dual Waveshare Ethernet PoE relay modules (30-CH levels + 8-CH core with digital inputs)
+
 ## Session Continuity
 
 Last session: 2026-03-23
-Stopped at: Phase 4 closed out — committed, summary created, ROADMAP/STATE updated
+Stopped at: Phase 02.1 inserted into roadmap, needs planning
 Resume file: None
-Next: Phase 2 remaining plans (02-02 through 02-05), Phase 3, or Phase 5
+Next: /gsd:plan-phase 02.1 to break down the hardware migration

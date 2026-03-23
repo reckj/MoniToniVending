@@ -58,6 +58,40 @@ Plans:
 
 ---
 
+### Phase 02.1: Dual Ethernet Relay Migration (INSERTED)
+**Goal:** Migrate from single RS485 relay + GPIO sensor to dual Ethernet PoE relay modules (Waveshare 30-CH for levels, 8-CH Module C for core) with digital input door sensing
+
+**Depends on:** Phase 2 (shared widgets)
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 02.1 to break down)
+
+**Delivers:**
+- TCP socket transport for Modbus RTU alongside existing RS485 serial (configurable)
+- Two relay controller instances: `relay_core` (8-CH) for motor/spindle/machine, `relay_levels` (30-CH) for per-level door locks
+- Digital input reading (function code 0x02) on 8-CH module for door sensor (replaces GPIO)
+- HardwareManager routing: motor/spindle → core module, door locks → levels module
+- Config restructure: IP/port per module, channel mappings per module, digital input config
+- Updated UI screens (relay, motor, sensor) for dual-module setup
+
+**Hardware:**
+- Waveshare Modbus POE ETH Relay 30CH — levels (door locks), Modbus RTU over TCP, default 192.168.1.254:502
+- Waveshare Modbus POE ETH Relay (C) — core (motor, spindle, machine functions) + 8 digital inputs, Modbus RTU over TCP
+- RS485 serial kept as fallback transport option
+
+**Success Criteria:**
+- Both relay modules controllable independently via Ethernet
+- Door sensor reads from 8-CH digital input instead of GPIO
+- Motor/spindle operations route to core module
+- Door lock operations route to levels module
+- RS485 serial still works as alternative transport
+- All existing relay/motor/sensor settings screens updated
+- Mock controllers still work for development without hardware
+
+---
+
 ### Phase 3: Setup Wizard
 **Goal:** First-time configuration flow for new machine deployment
 
@@ -133,11 +167,14 @@ Plans:
 
 ```
 Phase 1 (Architecture)
-    └── Phase 2 (Sub-screens) ──┬── Phase 3 (Wizard)
-                                └── Phase 4 (Maintenance)
-                                         │
-                                         v
-                                Phase 5 (Polish & Testing)
+    └── Phase 2 (Sub-screens)
+            └── Phase 02.1 (Dual Ethernet Relay Migration) ← INSERTED
+                    ├── Phase 2 remaining (02-02..02-05)
+                    ├── Phase 3 (Wizard)
+                    └── Phase 4 (Maintenance) ✓
+                             │
+                             v
+                    Phase 5 (Polish & Testing)
 ```
 
 ## Progress Tracking
@@ -146,6 +183,7 @@ Phase 1 (Architecture)
 |-------|--------|-------|-------|
 | 1. Debug Screen Architecture | Complete ✓ | 2/2 | Verified 2026-02-06 |
 | 2. Settings Sub-screens | In Progress | 1/5 | Shared widget library complete |
+| 02.1 Dual Ethernet Relay Migration | Not Started | 0/0 | INSERTED — hardware change |
 | 3. Setup Wizard | Planned | 0/3 | 3 plans in 3 waves |
 | 4. Maintenance Features | Complete ✓ | 2/2 | Verified 2026-03-23 |
 | 5. UI Polish & Hardware Testing | Not Started | 0/0 | |
