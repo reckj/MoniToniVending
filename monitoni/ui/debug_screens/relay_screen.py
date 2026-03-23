@@ -1,38 +1,47 @@
 """
-Relay settings and testing screen.
+Relay settings and testing screen — dual-module layout.
 
-Provides Modbus configuration, relay testing, door lock mapping, and live status.
+Provides two independent sections:
+- Core Module (8-CH): motor, spindle, machine relays
+- Levels Module (30-CH): door lock relays
+
+Each section has: connection status, settings, relay test buttons.
 """
 
 import asyncio
-from typing import Optional, List, Tuple
+from typing import List, Optional, Tuple
 
-from kivy.clock import Clock
+from kivy.graphics import Color, Ellipse
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 from kivymd.uix.button import MDRaisedButton
 from kivymd.uix.label import MDLabel
 
-from monitoni.ui.debug_screens.base import BaseDebugSubScreen
-from monitoni.ui.debug_screens.widgets import (
-    SettingsCard, HoldButton, NumpadField, LiveStatusCard,
-    show_confirm_dialog, reset_section_to_defaults, CORAL_ACCENT, INPUT_BUTTON
-)
 from monitoni.core.config import ConfigManager
 from monitoni.hardware.manager import HardwareManager
+from monitoni.ui.debug_screens.base import BaseDebugSubScreen
+from monitoni.ui.debug_screens.widgets import (
+    CORAL_ACCENT,
+    INPUT_BUTTON,
+    NEAR_BLACK,
+    HoldButton,
+    LiveStatusCard,
+    NumpadField,
+    SettingsCard,
+    reset_section_to_defaults,
+    show_confirm_dialog,
+)
 
 
 class RelaySettingsScreen(BaseDebugSubScreen):
     """
-    Relay configuration and testing screen.
+    Relay configuration and testing screen — dual-module layout.
 
-    Provides:
-    - Modbus connection settings
-    - Individual relay testing (hold-to-activate)
-    - Cascade test for all relays
-    - Door lock relay mapping
-    - Live relay status
-    - Reset to defaults
+    Section 1 — Core Module (8-CH): motor, spindle, machine relays
+    Section 2 — Levels Module (30-CH): door lock relays
+
+    Provides per-module: connection status, transport settings,
+    relay test hold-buttons, and combined live status card.
     """
 
     def __init__(
@@ -40,201 +49,471 @@ class RelaySettingsScreen(BaseDebugSubScreen):
         hardware: HardwareManager,
         config_manager: ConfigManager,
         navigate_back=None,
-        **kwargs
+        **kwargs,
     ):
-        """
-        Initialize relay settings screen.
-
-        Args:
-            hardware: HardwareManager instance
-            config_manager: ConfigManager instance
-            navigate_back: Callback to return to menu
-            **kwargs: Additional Screen arguments
-        """
         self.hardware = hardware
         self.config_manager = config_manager
         self.title = "Relay Control"
 
-        # Cascade test state
-        self._cascade_task = None
-        self._cascade_running = False
+        # Track connection-dot labels for live updates
+        self._core_dot_widget: Optional[MDLabel] = None
+        self._levels_dot_widget: Optional[MDLabel] = None
 
         super().__init__(navigate_back=navigate_back, **kwargs)
         self._build_content()
 
+    # ------------------------------------------------------------------
+    # Top-level build
+    # ------------------------------------------------------------------
+
     def _build_content(self):
-        """Build the relay settings screen content."""
-        # Card 1: Modbus Connection
-        self._build_modbus_card()
+        """Build all cards top-to-bottom."""
+        # --- Core Module ---
+        self._build_module_status_header("core")
+        self._build_module_settings_card("core")
+        self._build_module_relay_test_card("core")
 
-        # Card 2: Relay Testing
-        self._build_relay_test_card()
+        # --- Levels Module ---
+        self._build_module_status_header("levels")
+        self._build_module_settings_card("levels")
+        self._build_module_relay_test_card("levels")
 
-        # Card 3: Door Lock Mapping
+        # --- Door Lock Mapping (Levels Module) ---
         self._build_door_lock_card()
 
-        # Card 4: Live Status
+        # --- Combined Live Status ---
         self._build_status_card()
 
-        # Reset button
+        # --- Factory Reset ---
         self._build_reset_button()
 
-    def _build_modbus_card(self):
-        """Build Modbus connection settings card."""
-        card = SettingsCard("Modbus Connection")
+    # ------------------------------------------------------------------
+    # Connection status header
+    # ------------------------------------------------------------------
 
-        # Port (string field - tappable label showing current value)
-        port_row = BoxLayout(
-            orientation='horizontal',
+    def _build_module_status_header(self, module: str):
+        """
+        Build a connection status header row for a module.
+
+        Shows: '<Module Name>' label + colored dot + 'IP:port' text.
+        """
+        is_core = module == "core"
+        cfg = (
+            self.config_manager.config.hardware.relay_core
+            if is_core
+            else self.config_manager.config.hardware.relay_levels
+        )
+
+        row = BoxLayout(
+            orientation="horizontal",
+            size_hint_y=None,
+            height="44dp",
+            spacing="8dp",
+            padding=("0dp", "8dp", "0dp", "4dp"),
+        )
+
+        # Module name label
+        name_label = MDLabel(
+            text="Core Module (8-CH)" if is_core else "Levels Module (30-CH)",
+            bold=True,
+            font_style="Subtitle1",
+            size_hint_x=0.5,
+            halign="left",
+        )
+        row.add_widget(name_label)
+
+        # Connection dot (small colored circle as text label)
+        dot_label = MDLabel(
+            text="o",
+            font_style="H6",
+            size_hint_x=0.1,
+            halign="center",
+            theme_text_color="Custom",
+            text_color=(0.5, 0.5, 0.5, 1),  # grey until first poll
+        )
+        if is_core:
+            self._core_dot_widget = dot_label
+        else:
+            self._levels_dot_widget = dot_label
+        row.add_widget(dot_label)
+
+        # IP:port text
+        if cfg:
+            ip_text = f"{cfg.host}:{cfg.port}"
+        else:
+            ip_text = "not configured"
+        ip_label = MDLabel(
+            text=ip_text,
+            font_style="Body2",
+            size_hint_x=0.4,
+            halign="right",
+            theme_text_color="Secondary",
+        )
+        row.add_widget(ip_label)
+
+        self.add_content(row)
+
+        # Schedule periodic dot refresh (1 s)
+        from kivy.clock import Clock
+
+        if is_core:
+            Clock.schedule_interval(
+                lambda dt: self._refresh_dot("core"), 1.0
+            )
+        else:
+            Clock.schedule_interval(
+                lambda dt: self._refresh_dot("levels"), 1.0
+            )
+
+    def _refresh_dot(self, module: str):
+        """Update connection dot color based on current connection state."""
+        if module == "core":
+            dot = self._core_dot_widget
+            controller = self.hardware.relay_core
+        else:
+            dot = self._levels_dot_widget
+            controller = self.hardware.relay_levels
+
+        if dot is None:
+            return
+
+        if controller is None:
+            dot.text_color = (0.5, 0.5, 0.5, 1)  # grey — not configured
+        elif controller.is_connected():
+            dot.text_color = (0, 0.85, 0.35, 1)  # green
+        else:
+            dot.text_color = (1, 0.2, 0.2, 1)  # red
+
+    # ------------------------------------------------------------------
+    # Module settings card (transport / host / port / slave / timeout)
+    # ------------------------------------------------------------------
+
+    def _build_module_settings_card(self, module: str):
+        """Build connection settings card for a relay module."""
+        is_core = module == "core"
+        title = "Core Module (8-CH) Settings" if is_core else "Levels Module (30-CH) Settings"
+        prefix = "hardware.relay_core" if is_core else "hardware.relay_levels"
+
+        cfg = (
+            self.config_manager.config.hardware.relay_core
+            if is_core
+            else self.config_manager.config.hardware.relay_levels
+        )
+
+        card = SettingsCard(title)
+
+        # Transport selector row
+        transport_row = BoxLayout(
+            orientation="horizontal",
             size_hint_y=None,
             height="50dp",
-            spacing="10dp"
+            spacing="10dp",
         )
-        port_label = MDLabel(
-            text="Port",
+        transport_row.add_widget(
+            MDLabel(text="Transport", size_hint_x=0.4, font_style="Body1")
+        )
+
+        current_transport = cfg.transport if cfg else "tcp"
+
+        tcp_btn = MDRaisedButton(
+            text="TCP",
+            size_hint_x=0.3,
+            md_bg_color=CORAL_ACCENT if current_transport == "tcp" else NEAR_BLACK,
+            on_release=lambda x, m=module: self._set_transport(m, "tcp"),
+        )
+        serial_btn = MDRaisedButton(
+            text="Serial",
+            size_hint_x=0.3,
+            md_bg_color=CORAL_ACCENT if current_transport == "serial" else NEAR_BLACK,
+            on_release=lambda x, m=module: self._set_transport(m, "serial"),
+        )
+        transport_row.add_widget(tcp_btn)
+        transport_row.add_widget(serial_btn)
+        card.add_content(transport_row)
+
+        # TCP fields: Host + Port
+        host_row = BoxLayout(
+            orientation="horizontal",
+            size_hint_y=None,
+            height="50dp",
+            spacing="10dp",
+        )
+        host_row.add_widget(
+            MDLabel(text="Host", size_hint_x=0.4, font_style="Body1")
+        )
+        current_host = cfg.host if cfg else "192.168.1.100"
+        host_btn = MDRaisedButton(
+            text=current_host,
             size_hint_x=0.6,
-            font_style='Body1'
-        )
-        port_row.add_widget(port_label)
-
-        current_port = self.config_manager.config.hardware.modbus.port
-        self.port_button = MDRaisedButton(
-            text=current_port,
-            size_hint_x=0.4,
             md_bg_color=INPUT_BUTTON,
-            on_release=lambda x: self._edit_port()
+            on_release=lambda x, m=module: self._edit_host(m),
         )
-        port_row.add_widget(self.port_button)
-        card.add_content(port_row)
+        host_row.add_widget(host_btn)
+        card.add_content(host_row)
 
-        # Baudrate
-        baudrate_field = NumpadField(
-            label="Baudrate",
-            config_path="hardware.modbus.baudrate",
-            config_manager=self.config_manager,
-            allow_decimal=False,
-            min_value=1200,
-            max_value=115200
-        )
-        card.add_content(baudrate_field)
-
-        # Slave Address
-        slave_field = NumpadField(
-            label="Slave Address",
-            config_path="hardware.modbus.slave_address",
+        port_field = NumpadField(
+            label="Port",
+            config_path=f"{prefix}.port",
             config_manager=self.config_manager,
             allow_decimal=False,
             min_value=1,
-            max_value=247
+            max_value=65535,
+        )
+        card.add_content(port_field)
+
+        # Serial fields: serial_port string + baudrate
+        serial_port_row = BoxLayout(
+            orientation="horizontal",
+            size_hint_y=None,
+            height="50dp",
+            spacing="10dp",
+        )
+        serial_port_row.add_widget(
+            MDLabel(text="Serial Port", size_hint_x=0.4, font_style="Body1")
+        )
+        current_serial_port = cfg.serial_port if cfg else "/dev/ttySC0"
+        serial_port_btn = MDRaisedButton(
+            text=current_serial_port,
+            size_hint_x=0.6,
+            md_bg_color=INPUT_BUTTON,
+            on_release=lambda x, m=module: self._edit_serial_port(m),
+        )
+        serial_port_row.add_widget(serial_port_btn)
+        card.add_content(serial_port_row)
+
+        baudrate_field = NumpadField(
+            label="Baudrate",
+            config_path=f"{prefix}.baudrate",
+            config_manager=self.config_manager,
+            allow_decimal=False,
+            min_value=1200,
+            max_value=115200,
+        )
+        card.add_content(baudrate_field)
+
+        # Shared: Slave Address + Timeout
+        slave_field = NumpadField(
+            label="Slave Address",
+            config_path=f"{prefix}.slave_address",
+            config_manager=self.config_manager,
+            allow_decimal=False,
+            min_value=1,
+            max_value=247,
         )
         card.add_content(slave_field)
 
-        # Timeout
         timeout_field = NumpadField(
             label="Timeout (s)",
-            config_path="hardware.modbus.timeout",
+            config_path=f"{prefix}.timeout",
             config_manager=self.config_manager,
             allow_decimal=True,
             min_value=0.1,
-            max_value=10.0
+            max_value=10.0,
         )
         card.add_content(timeout_field)
 
         self.add_content(card)
 
-    def _edit_port(self):
-        """Show dialog to edit Modbus port."""
-        # Simple confirmation dialog showing current port
-        # For production, could add text input dialog
-        current_port = self.config_manager.config.hardware.modbus.port
+    def _set_transport(self, module: str, transport: str):
+        """Save transport choice and rebuild settings display."""
+        prefix = "hardware.relay_core" if module == "core" else "hardware.relay_levels"
+        from monitoni.ui.debug_screens.widgets import update_config_value
+        update_config_value(self.config_manager, f"{prefix}.transport", transport)
+
+    def _edit_host(self, module: str):
+        """Show text input dialog to edit relay host IP."""
+        prefix = "hardware.relay_core" if module == "core" else "hardware.relay_levels"
+        cfg = (
+            self.config_manager.config.hardware.relay_core
+            if module == "core"
+            else self.config_manager.config.hardware.relay_levels
+        )
+        current = cfg.host if cfg else "192.168.1.100"
         show_confirm_dialog(
-            title="Modbus Port",
-            text=f"Current port: {current_port}\n\nChanging port requires restart.",
-            on_confirm=None
+            title=f"{'Core' if module == 'core' else 'Levels'} Module Host",
+            text=f"Current host: {current}\n\nEdit {prefix}.host in config/local.yaml to change.",
+            on_confirm=None,
         )
 
-    def _build_relay_test_card(self):
-        """Build relay testing card with cascade and individual buttons."""
-        card = SettingsCard("Relay Test")
-
-        # Cascade test button (full width, prominent)
-        cascade_btn = HoldButton(
-            text="Test All (Cascade)",
-            on_hold=self._start_cascade_test,
-            on_release_hold=self._stop_cascade_test
+    def _edit_serial_port(self, module: str):
+        """Show info dialog for serial port path."""
+        prefix = "hardware.relay_core" if module == "core" else "hardware.relay_levels"
+        cfg = (
+            self.config_manager.config.hardware.relay_core
+            if module == "core"
+            else self.config_manager.config.hardware.relay_levels
         )
-        cascade_btn.height = "70dp"
-        card.add_content(cascade_btn)
+        current = cfg.serial_port if cfg else "/dev/ttySC0"
+        show_confirm_dialog(
+            title=f"{'Core' if module == 'core' else 'Levels'} Serial Port",
+            text=f"Current port: {current}\n\nEdit {prefix}.serial_port in config/local.yaml to change.",
+            on_confirm=None,
+        )
 
-        # Grid of 32 relay buttons (4 columns x 8 rows)
+    # ------------------------------------------------------------------
+    # Relay test cards
+    # ------------------------------------------------------------------
+
+    def _build_module_relay_test_card(self, module: str):
+        """Build relay test card for a module."""
+        is_core = module == "core"
+
+        if is_core:
+            title = "Core Relay Test"
+            channel_count = 8
+            cols = 4
+            card = self._build_core_relay_test_card_content(title, channel_count, cols)
+        else:
+            title = "Levels Relay Test"
+            channel_count = 30
+            cols = 5
+            card = self._build_levels_relay_test_card_content(title, channel_count, cols)
+
+        self.add_content(card)
+
+    def _build_core_relay_test_card_content(self, title: str, channel_count: int, cols: int) -> SettingsCard:
+        """Build Core Module relay test card (8 channels, annotated)."""
+        card = SettingsCard(title)
+
+        cfg = self.config_manager.config.vending.motor
+        motor_ch = cfg.relay_channel
+        spindle_ch = cfg.spindle_lock_relay
+
         relay_grid = GridLayout(
-            cols=4,
+            cols=cols,
             spacing="5dp",
-            size_hint_y=None
+            size_hint_y=None,
         )
-        relay_grid.bind(minimum_height=relay_grid.setter('height'))
+        relay_grid.bind(minimum_height=relay_grid.setter("height"))
 
-        for channel in range(1, 33):
+        for channel in range(1, channel_count + 1):
+            # Build label: "CH1\n(Motor)" etc.
+            if channel == motor_ch:
+                label_text = f"CH{channel}\n(Motor)"
+            elif channel == spindle_ch:
+                label_text = f"CH{channel}\n(Spindle)"
+            else:
+                label_text = f"CH{channel}"
+
             btn = HoldButton(
-                text=f"R{channel}",
-                on_hold=lambda ch=channel: self._activate_relay(ch),
-                on_release_hold=lambda ch=channel: self._deactivate_relay(ch)
+                text=label_text,
+                on_hold=lambda ch=channel: self._activate_core_relay(ch),
+                on_release_hold=lambda ch=channel: self._deactivate_core_relay(ch),
             )
-            btn.height = "50dp"
+            btn.height = "60dp"
             relay_grid.add_widget(btn)
 
         card.add_content(relay_grid)
-        self.add_content(card)
+        return card
+
+    def _build_levels_relay_test_card_content(self, title: str, channel_count: int, cols: int) -> SettingsCard:
+        """Build Levels Module relay test card (30 channels, mapped channels highlighted)."""
+        card = SettingsCard(title)
+
+        # Channels mapped to door locks
+        mapped_channels = set(
+            self.config_manager.config.vending.door_lock.relay_channels
+        )
+
+        relay_grid = GridLayout(
+            cols=cols,
+            spacing="5dp",
+            size_hint_y=None,
+        )
+        relay_grid.bind(minimum_height=relay_grid.setter("height"))
+
+        for channel in range(1, channel_count + 1):
+            is_mapped = channel in mapped_channels
+            label_text = f"CH{channel}"
+
+            btn = HoldButton(
+                text=label_text,
+                on_hold=lambda ch=channel: self._activate_levels_relay(ch),
+                on_release_hold=lambda ch=channel: self._deactivate_levels_relay(ch),
+            )
+            btn.height = "56dp"
+            # Highlight mapped channels with coral accent
+            if is_mapped:
+                btn.md_bg_color = CORAL_ACCENT
+            else:
+                btn.md_bg_color = NEAR_BLACK
+
+            relay_grid.add_widget(btn)
+
+        card.add_content(relay_grid)
+        return card
+
+    # Relay activation helpers — Core Module
+
+    def _activate_core_relay(self, channel: int):
+        """Activate a relay on the Core Module."""
+        if self.hardware.relay_core:
+            asyncio.create_task(self.hardware.relay_core.set_relay(channel, True))
+
+    def _deactivate_core_relay(self, channel: int):
+        """Deactivate a relay on the Core Module."""
+        if self.hardware.relay_core:
+            asyncio.create_task(self.hardware.relay_core.set_relay(channel, False))
+
+    # Relay activation helpers — Levels Module
+
+    def _activate_levels_relay(self, channel: int):
+        """Activate a relay on the Levels Module."""
+        if self.hardware.relay_levels:
+            asyncio.create_task(self.hardware.relay_levels.set_relay(channel, True))
+
+    def _deactivate_levels_relay(self, channel: int):
+        """Deactivate a relay on the Levels Module."""
+        if self.hardware.relay_levels:
+            asyncio.create_task(self.hardware.relay_levels.set_relay(channel, False))
+
+    # ------------------------------------------------------------------
+    # Door lock mapping card (Levels Module)
+    # ------------------------------------------------------------------
 
     def _build_door_lock_card(self):
-        """Build door lock mapping card."""
-        card = SettingsCard("Door Lock Mapping")
+        """Build door lock relay mapping card — channels refer to Levels Module."""
+        card = SettingsCard("Door Lock Mapping (Levels Module)")
 
-        # Get current relay channels list
         levels = self.config_manager.config.vending.levels
         relay_channels = self.config_manager.config.vending.door_lock.relay_channels
 
-        # Create numpad field for each level
         for level in range(1, levels + 1):
-            # Get current channel for this level (with bounds checking)
             current_channel = relay_channels[level - 1] if level - 1 < len(relay_channels) else 0
 
-            # Create a custom row with label and button
             row = BoxLayout(
-                orientation='horizontal',
+                orientation="horizontal",
                 size_hint_y=None,
                 height="50dp",
-                spacing="10dp"
+                spacing="10dp",
             )
 
             label = MDLabel(
                 text=f"Level {level}:",
                 size_hint_x=0.6,
-                font_style='Body1'
+                font_style="Body1",
             )
             row.add_widget(label)
 
-            # Button to open numpad for this level
             btn = MDRaisedButton(
                 text=str(current_channel),
                 size_hint_x=0.4,
                 md_bg_color=INPUT_BUTTON,
-                on_release=lambda x, lv=level, btn_ref=None: self._edit_door_lock_channel(lv, btn_ref or x)
+                on_release=lambda x, lv=level: self._edit_door_lock_channel(lv, x),
             )
-            # Store button reference for updating after edit
             btn.level = level
             row.add_widget(btn)
 
             card.add_content(row)
 
-        # Unlock duration field
+        # Unlock duration
         unlock_duration_field = NumpadField(
             label="Unlock Duration (s)",
             config_path="vending.door_lock.unlock_duration_s",
             config_manager=self.config_manager,
             allow_decimal=False,
             min_value=5,
-            max_value=120
+            max_value=120,
         )
         card.add_content(unlock_duration_field)
 
@@ -244,19 +523,15 @@ class RelaySettingsScreen(BaseDebugSubScreen):
         """Edit relay channel for a door lock level."""
         from monitoni.ui.debug_screens.widgets import NumpadDialog
 
-        # Get current value
         relay_channels = self.config_manager.config.vending.door_lock.relay_channels
         current_value = relay_channels[level - 1] if level - 1 < len(relay_channels) else 0
 
         def on_submit(new_value: float):
-            # Update the relay_channels list
             new_channels = list(relay_channels)
-            # Ensure list is long enough
             while len(new_channels) < level:
                 new_channels.append(0)
             new_channels[level - 1] = int(new_value)
 
-            # Save to config
             update_dict = {
                 "vending": {
                     "door_lock": {
@@ -265,21 +540,19 @@ class RelaySettingsScreen(BaseDebugSubScreen):
                 }
             }
 
-            # Show confirmation (risky change)
             show_confirm_dialog(
                 title="Confirmation Required",
-                text=f"Set Level {level} to Relay {int(new_value)}?\n\nThis is a hardware-relevant setting.",
-                on_confirm=lambda: self._apply_door_lock_change(update_dict, button, int(new_value))
+                text=f"Set Level {level} to Levels CH{int(new_value)}?\n\nThis is a hardware-relevant setting.",
+                on_confirm=lambda: self._apply_door_lock_change(update_dict, button, int(new_value)),
             )
 
-        # Open numpad
         dialog = NumpadDialog(
-            title=f"Level {level} Relay Channel",
+            title=f"Level {level} Relay Channel (Levels Module)",
             initial_value=float(current_value),
             min_value=1,
-            max_value=32,
+            max_value=30,
             allow_decimal=False,
-            on_submit=on_submit
+            on_submit=on_submit,
         )
         dialog.open()
 
@@ -291,125 +564,101 @@ class RelaySettingsScreen(BaseDebugSubScreen):
         except Exception as e:
             print(f"Failed to update door lock channel: {e}")
 
+    # ------------------------------------------------------------------
+    # Live status card (dual-module)
+    # ------------------------------------------------------------------
+
     def _build_status_card(self):
-        """Build live relay status card."""
+        """Build combined live status card for both modules."""
+
         async def get_relay_status() -> List[Tuple[str, str, Tuple[float, float, float, float]]]:
-            """Get status of important relays (async)."""
-            if not self.hardware.relay:
-                return [("Relay", "Not connected", (1, 0, 0, 1))]
-
+            """Get status of key relays from both modules (async)."""
             status_items = []
+            config = self.config_manager.config
 
-            # Motor relay
-            motor_ch = self.config_manager.config.vending.motor.relay_channel
-            try:
-                motor_state = await self.hardware.relay.get_relay(motor_ch)
-                state_text = "ON" if motor_state else "OFF"
-                color = (0, 1, 0, 1) if motor_state else (0.5, 0.5, 0.5, 1)
-                status_items.append((f"Motor (R{motor_ch})", state_text, color))
-            except Exception:
-                status_items.append((f"Motor (R{motor_ch})", "ERROR", (1, 0, 0, 1)))
+            # --- Core Module ---
+            motor_ch = config.vending.motor.relay_channel
+            spindle_ch = config.vending.motor.spindle_lock_relay
 
-            # Spindle lock relay
-            spindle_ch = self.config_manager.config.vending.motor.spindle_lock_relay
-            try:
-                spindle_state = await self.hardware.relay.get_relay(spindle_ch)
-                state_text = "ON" if spindle_state else "OFF"
-                color = (0, 1, 0, 1) if spindle_state else (0.5, 0.5, 0.5, 1)
-                status_items.append((f"Spindle (R{spindle_ch})", state_text, color))
-            except Exception:
-                status_items.append((f"Spindle (R{spindle_ch})", "ERROR", (1, 0, 0, 1)))
-
-            # First 3 door lock relays (sample)
-            door_channels = self.config_manager.config.vending.door_lock.relay_channels[:3]
-            for i, ch in enumerate(door_channels):
+            if not self.hardware.relay_core:
+                status_items.append(("Core Module", "Not connected", (1, 0, 0, 1)))
+            else:
                 try:
-                    door_state = await self.hardware.relay.get_relay(ch)
-                    state_text = "ON" if door_state else "OFF"
-                    color = (0, 1, 0, 1) if door_state else (0.5, 0.5, 0.5, 1)
-                    status_items.append((f"Door {i+1} (R{ch})", state_text, color))
+                    motor_state = await self.hardware.relay_core.get_relay(motor_ch)
+                    state_text = "ON" if motor_state else "OFF"
+                    color = (0, 1, 0, 1) if motor_state else (0.5, 0.5, 0.5, 1)
+                    status_items.append((f"Core: Motor (CH{motor_ch})", state_text, color))
                 except Exception:
-                    status_items.append((f"Door {i+1} (R{ch})", "ERROR", (1, 0, 0, 1)))
+                    status_items.append((f"Core: Motor (CH{motor_ch})", "ERROR", (1, 0, 0, 1)))
+
+                try:
+                    spindle_state = await self.hardware.relay_core.get_relay(spindle_ch)
+                    state_text = "ON" if spindle_state else "OFF"
+                    color = (0, 1, 0, 1) if spindle_state else (0.5, 0.5, 0.5, 1)
+                    status_items.append((f"Core: Spindle (CH{spindle_ch})", state_text, color))
+                except Exception:
+                    status_items.append((f"Core: Spindle (CH{spindle_ch})", "ERROR", (1, 0, 0, 1)))
+
+            # --- Levels Module ---
+            door_channels = config.vending.door_lock.relay_channels[:3]
+
+            if not self.hardware.relay_levels:
+                status_items.append(("Levels Module", "Not connected", (1, 0, 0, 1)))
+            else:
+                for i, ch in enumerate(door_channels):
+                    try:
+                        door_state = await self.hardware.relay_levels.get_relay(ch)
+                        state_text = "ON" if door_state else "OFF"
+                        color = (0, 1, 0, 1) if door_state else (0.5, 0.5, 0.5, 1)
+                        status_items.append((f"Levels: Door {i + 1} (CH{ch})", state_text, color))
+                    except Exception:
+                        status_items.append((f"Levels: Door {i + 1} (CH{ch})", "ERROR", (1, 0, 0, 1)))
 
             return status_items
 
         status_card = LiveStatusCard(
             title="Relay Status",
             get_status_callback=get_relay_status,
-            update_interval=1.0
+            update_interval=1.0,
         )
         self.add_content(status_card)
 
+    # ------------------------------------------------------------------
+    # Factory reset
+    # ------------------------------------------------------------------
+
     def _build_reset_button(self):
-        """Build reset to defaults button."""
+        """Build factory reset button."""
         reset_btn = MDRaisedButton(
             text="Factory Reset",
             size_hint=(1, None),
             height="60dp",
             md_bg_color=CORAL_ACCENT,
-            on_release=lambda x: self._reset_to_defaults()
+            on_release=lambda x: self._reset_to_defaults(),
         )
         self.add_content(reset_btn)
 
     def _reset_to_defaults(self):
-        """Reset relay settings to defaults."""
+        """Reset relay and door lock settings to defaults."""
         def do_reset():
-            # Reset Modbus section
-            reset_section_to_defaults(self.config_manager, "hardware.modbus")
-            # Reset door lock section
+            reset_section_to_defaults(self.config_manager, "hardware.relay_core")
+            reset_section_to_defaults(self.config_manager, "hardware.relay_levels")
             reset_section_to_defaults(self.config_manager, "vending.door_lock")
 
         show_confirm_dialog(
             title="Factory Reset",
-            text="Reset relay settings?\n\nThis resets Modbus and door lock configuration.",
-            on_confirm=do_reset
+            text=(
+                "Reset relay settings?\n\n"
+                "This resets Core Module, Levels Module, and door lock configuration."
+            ),
+            on_confirm=do_reset,
         )
 
-    def _activate_relay(self, channel: int):
-        """Activate a relay channel."""
-        if self.hardware.relay:
-            asyncio.create_task(self.hardware.relay.set_relay(channel, True))
-
-    def _deactivate_relay(self, channel: int):
-        """Deactivate a relay channel."""
-        if self.hardware.relay:
-            asyncio.create_task(self.hardware.relay.set_relay(channel, False))
-
-    def _start_cascade_test(self):
-        """Start cascade test (sequential relay activation)."""
-        if not self._cascade_running:
-            self._cascade_running = True
-            self._cascade_task = asyncio.create_task(self._run_cascade_test())
-
-    def _stop_cascade_test(self):
-        """Stop cascade test and deactivate all relays."""
-        self._cascade_running = False
-        if self._cascade_task:
-            self._cascade_task.cancel()
-            self._cascade_task = None
-
-        # Deactivate all relays
-        if self.hardware.relay:
-            asyncio.create_task(self.hardware.relay.set_all_relays(False))
-
-    async def _run_cascade_test(self):
-        """Run cascade test loop."""
-        try:
-            while self._cascade_running:
-                for channel in range(1, 33):
-                    if not self._cascade_running:
-                        break
-
-                    # Activate relay
-                    await self.hardware.relay.set_relay(channel, True)
-                    await asyncio.sleep(0.1)  # 100ms per relay
-                    await self.hardware.relay.set_relay(channel, False)
-        except asyncio.CancelledError:
-            pass
-        except Exception as e:
-            print(f"Cascade test error: {e}")
+    # ------------------------------------------------------------------
+    # Safety cleanup
+    # ------------------------------------------------------------------
 
     def on_pre_leave(self, *args):
-        """Safety: stop cascade and deactivate relays when leaving screen."""
+        """Safety: deactivate any held relays when leaving screen."""
         super().on_pre_leave(*args)
-        self._stop_cascade_test()
+        # No cascade test to stop — individual hold buttons auto-release via touch.grab pattern
