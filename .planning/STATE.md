@@ -1,3 +1,18 @@
+---
+gsd_state_version: 1.0
+milestone: v0.2
+milestone_name: milestone
+status: Planned, pending execution
+stopped_at: Completed 02.1-01-PLAN.md — foundation layer (modbus_utils, TCP relay, DI controller, config models)
+last_updated: "2026-03-23T18:52:53.784Z"
+last_activity: 2026-03-23 - Inserted Phase 02.1 for hardware migration
+progress:
+  total_phases: 6
+  completed_phases: 1
+  total_plans: 16
+  completed_plans: 8
+---
+
 # MoniToniVending - Project State
 
 ## Project Reference
@@ -8,16 +23,16 @@
 ## Current Position
 
 - **Phase:** 02.1 - Dual Ethernet Relay Migration (INSERTED)
-- **Plan:** 4 plans in 3 waves, ready for execution
-- **Status:** Planned, pending execution
-- **Last activity:** 2026-03-23 - Inserted Phase 02.1 for hardware migration
+- **Plan:** 02.1-01 complete, 3 remaining (plans 02-04)
+- **Status:** In progress — plan 01 complete
+- **Last activity:** 2026-03-23 - Executed 02.1-01: Modbus TCP transport foundation
 
 ## Progress
 
 ```
 Phase 1: Debug Screen Architecture  [==========] Complete ✓
 Phase 2: Settings Sub-screens       [========  ] 1/5 plans (20%)
-Phase 02.1: Dual Ethernet Relay     [          ] Not Started (INSERTED)
+Phase 02.1: Dual Ethernet Relay     [==        ] 1/4 plans (25%)
 Phase 3: Setup Wizard               [          ] Not Started
 Phase 4: Maintenance Features       [==========] Complete ✓
 Phase 5: UI Polish & Hardware Test  [          ] Not Started
@@ -29,6 +44,11 @@ Overall: [=====.....] ~50%
 
 | Decision | Date | Phase-Plan |
 |----------|------|------------|
+| Waveshare transparent mode = raw Modbus RTU with CRC over TCP (no MBAP, no pymodbus) | 2026-03-23 | 02.1-01 |
+| No command retry on failure — safety: avoids double-firing relay coils | 2026-03-23 | 02.1-01 |
+| Per-controller asyncio.Lock; background reconnect only reconnects transport, never replays | 2026-03-23 | 02.1-01 |
+| readexactly() for deterministic TCP reads (not read()) | 2026-03-23 | 02.1-01 |
+| Optional pydantic config fields with defaults for backward compat | 2026-03-23 | 02.1-01 |
 | Insert Phase 02.1 for dual Ethernet relay hardware migration | 2026-03-23 | 02.1 |
 | Keep RS485 serial as fallback transport option | 2026-03-23 | 02.1 |
 | 30-CH module for levels, 8-CH Module C for core + digital inputs | 2026-03-23 | 02.1 |
@@ -54,7 +74,7 @@ Overall: [=====.....] ~50%
 
 ## Session Continuity
 
-Last session: 2026-03-23
-Stopped at: Phase 02.1 fully planned (4 plans, 3 waves), ready for execution
-Resume file: .planning/phases/02.1-dual-ethernet-relay-migration/.continue-here.md
+Last session: 2026-03-23T18:52:53.776Z
+Stopped at: Completed 02.1-01-PLAN.md — foundation layer (modbus_utils, TCP relay, DI controller, config models)
+Resume file: None
 Next: /gsd:execute-phase 02.1
