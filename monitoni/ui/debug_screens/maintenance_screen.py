@@ -52,29 +52,32 @@ class MaintenanceScreen(BaseDebugSubScreen):
         # Operating Mode Card
         self.mode_card = SettingsCard(title="Operating Mode")
 
-        # Maintenance mode toggle row
+        # Maintenance mode toggle row — right padding compensates for MDSwitch thumb overshoot
         toggle_row = BoxLayout(
             orientation='horizontal',
             size_hint_y=None,
             height="56dp",
             spacing="10dp",
-            padding=["10dp", "4dp", "10dp", "4dp"]
+            padding=[0, 0, "12dp", 0],
         )
 
         toggle_label = MDLabel(
             text="Maintenance Mode:",
-            size_hint_x=0.7,
+            size_hint_x=1,
             font_style='Body1'
         )
         toggle_row.add_widget(toggle_label)
 
-        # MDSwitch - MUST use Clock.schedule_once for KivyMD 1.2.0 quirk
+        # MDSwitch - bind to 'active' property for reliable dispatch
         self.maintenance_toggle = MDSwitch(
             size_hint=(None, None),
             size=("48dp", "28dp"),
             pos_hint={"center_y": 0.5},
         )
-        self.maintenance_toggle.bind(on_active=self.on_maintenance_toggle)
+        # Red thumb/track when active
+        self.maintenance_toggle.thumb_color_active = ERROR_RED
+        self.maintenance_toggle.track_color_active = [1, 0.3, 0.3, 0.5]
+        self.maintenance_toggle.bind(active=self.on_maintenance_toggle)
         toggle_row.add_widget(self.maintenance_toggle)
 
         self.mode_card.add_content(toggle_row)

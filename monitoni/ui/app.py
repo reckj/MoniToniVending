@@ -14,7 +14,7 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.button import MDRaisedButton
 from kivymd.uix.boxlayout import MDBoxLayout
 
-from monitoni.core.config import Config
+from monitoni.core.config import Config, get_config_manager
 from monitoni.core.logger import Logger
 from monitoni.core.state_machine import PurchaseStateMachine, State, Event
 from monitoni.hardware.manager import HardwareManager
@@ -82,7 +82,8 @@ class VendingApp(MDApp):
         # Add screens
         from monitoni.ui.customer_screen import CustomerScreen
         from monitoni.ui.debug_screen import DebugScreen
-        
+        from monitoni.ui.maintenance_display_screen import MaintenanceDisplayScreen
+
         self.screen_manager.add_widget(CustomerScreen(
             name='customer',
             app=self,
@@ -91,7 +92,7 @@ class VendingApp(MDApp):
             state_machine=self.state_machine,
             logger=self.logger
         ))
-        
+
         self.screen_manager.add_widget(DebugScreen(
             name='debug',
             app=self,
@@ -99,9 +100,15 @@ class VendingApp(MDApp):
             hardware=self.hardware,
             logger=self.logger
         ))
-        
-        # Start on customer screen
-        self.screen_manager.current = 'customer'
+
+        self.screen_manager.add_widget(MaintenanceDisplayScreen(
+            name='maintenance_display',
+            app=self,
+            logger=self.logger
+        ))
+
+        # Start on customer screen (or maintenance if active)
+        self._go_to_customer_or_maintenance()
         
         # Set up state machine callbacks
         self._setup_state_callbacks()
@@ -185,7 +192,17 @@ class VendingApp(MDApp):
         self.screen_manager.current = 'debug'
         
     def switch_to_customer(self):
-        """Switch to customer screen."""
+        """Switch to customer screen (or maintenance display if active)."""
+        self._go_to_customer_or_maintenance()
+
+    def _go_to_customer_or_maintenance(self):
+        """Route to customer or maintenance display based on config."""
+        try:
+            if get_config_manager().config.system.maintenance_mode:
+                self.screen_manager.current = 'maintenance_display'
+                return
+        except Exception:
+            pass
         self.screen_manager.current = 'customer'
         
     def on_start(self):

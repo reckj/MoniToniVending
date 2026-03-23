@@ -22,7 +22,7 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.button import MDRaisedButton, MDFlatButton
 from kivymd.uix.card import MDCard
 
-from monitoni.core.config import Config, get_config_manager
+from monitoni.core.config import Config
 from monitoni.core.logger import Logger
 from monitoni.core.state_machine import PurchaseStateMachine, State, Event
 from monitoni.hardware.manager import HardwareManager
@@ -590,15 +590,6 @@ class CustomerScreen(Screen):
             button: Selected button
         """
         level = button.level
-
-        # Check maintenance mode first
-        try:
-            config_mgr = get_config_manager()
-            if config_mgr.config.system.maintenance_mode:
-                self.set_status("Machine under maintenance", (1, 0.3, 0, 1))
-                return
-        except Exception:
-            pass
 
         # Only allow selection in idle state
         if not self.state_machine.is_idle():
