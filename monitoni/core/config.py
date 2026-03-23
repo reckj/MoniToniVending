@@ -45,12 +45,49 @@ class AudioHardwareConfig(BaseModel):
     volume: float = Field(default=0.7, ge=0.0, le=1.0)
 
 
+class EthernetRelayConfig(BaseModel):
+    """
+    Ethernet relay module configuration (Waveshare Modbus TCP).
+
+    Supports both TCP (transparent mode) and legacy serial (RS485) transport.
+    All fields have defaults so existing local.yaml files without these sections
+    continue to load correctly.
+    """
+    transport: str = "tcp"               # "tcp" or "serial"
+    host: str = "192.168.1.100"
+    port: int = 502
+    slave_address: int = 1
+    timeout: float = 1.0
+    serial_port: str = "/dev/ttySC0"
+    baudrate: int = 9600
+    max_channels: int = 8
+
+
+class DoorSensorConfig(BaseModel):
+    """
+    Door sensor configuration.
+
+    Selects between GPIO pin sensing (legacy) and Modbus DI reading (new).
+    All fields have defaults for backward compatibility.
+    """
+    method: str = "gpio"                 # "gpio" or "modbus_di"
+    gpio_pin: int = 5
+    gpio_pull: str = "up"
+    gpio_active: str = "low"
+    di_index: int = 0                    # DI channel index on the Modbus module
+    poll_interval_ms: int = 150
+
+
 class HardwareConfig(BaseModel):
     """Hardware configuration."""
     modbus: ModbusConfig
     wled: WLEDConfig
     gpio: GPIOConfig
     audio: AudioHardwareConfig
+    # Dual Ethernet relay modules (Phase 02.1). Optional for backward compat.
+    relay_core: Optional[EthernetRelayConfig] = None
+    relay_levels: Optional[EthernetRelayConfig] = None
+    door_sensor: Optional[DoorSensorConfig] = None
 
 
 class MotorConfig(BaseModel):

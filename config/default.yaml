@@ -38,6 +38,43 @@ hardware:
   audio:
     enabled: true
     volume: 0.7  # 0.0 to 1.0
+
+  # -------------------------------------------------------------------------
+  # Dual Ethernet Relay Modules (Phase 02.1)
+  # relay_core and relay_levels override the legacy modbus section when set.
+  # Set transport: "serial" to fall back to RS485 for either module.
+  # -------------------------------------------------------------------------
+
+  # 8-CH Module C: core machine relays + digital inputs
+  relay_core:
+    transport: tcp
+    host: "192.168.1.100"
+    port: 502
+    slave_address: 1
+    timeout: 1.0
+    serial_port: "/dev/ttySC0"
+    baudrate: 9600
+    max_channels: 8
+
+  # 30-CH Module: vending level relays
+  relay_levels:
+    transport: tcp
+    host: "192.168.1.101"
+    port: 502
+    slave_address: 1
+    timeout: 1.0
+    serial_port: "/dev/ttySC0"
+    baudrate: 9600
+    max_channels: 30
+
+  # Door sensor: "gpio" uses GPIO pin (legacy), "modbus_di" uses FC02 on relay_core
+  door_sensor:
+    method: gpio        # Override in local.yaml: "modbus_di" for Ethernet DI
+    gpio_pin: 5         # BCM GPIO 5 (Pin 29) - used when method is "gpio"
+    gpio_pull: "up"
+    gpio_active: "low"
+    di_index: 0         # DI channel on 8-CH module - used when method is "modbus_di"
+    poll_interval_ms: 150
     
 # Vending Configuration
 vending:

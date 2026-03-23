@@ -204,26 +204,73 @@ class LEDController(HardwareComponent):
 
 class SensorController(HardwareComponent):
     """Abstract sensor controller interface."""
-    
+
     @abstractmethod
     async def get_door_state(self) -> Optional[bool]:
         """
         Get door sensor state.
-        
+
         Returns:
             True if door open, False if closed, None if error
         """
         pass
-        
+
     @abstractmethod
     def set_door_callback(self, callback) -> None:
         """
         Set callback for door state changes.
-        
+
         Args:
             callback: Callback function(is_open: bool)
         """
         pass
+
+
+class DigitalInputController(SensorController):
+    """
+    Abstract digital input controller interface.
+
+    Extends SensorController with multi-channel discrete input reading.
+    Suitable for Modbus FC02 digital input modules (e.g., Waveshare 8-CH Module C).
+    """
+
+    def __init__(self, name: str, door_di_index: int = 0):
+        """
+        Initialize digital input controller.
+
+        Args:
+            name: Component name for logging
+            door_di_index: DI channel index (0-indexed) mapped to door sensor
+        """
+        super().__init__(name)
+        self._door_di_index: int = door_di_index
+        self._door_callback = None
+
+    @abstractmethod
+    async def read_digital_input(self, di_index: int = 0) -> Optional[bool]:
+        """
+        Read a single digital input channel.
+
+        Args:
+            di_index: DI channel index (0-indexed)
+
+        Returns:
+            True if input is active, False if inactive, None on error
+        """
+        pass
+
+    async def get_door_state(self) -> Optional[bool]:
+        """Read door state via the configured DI channel."""
+        return await self.read_digital_input(self._door_di_index)
+
+    def set_door_callback(self, callback) -> None:
+        """
+        Set callback for door state changes.
+
+        Args:
+            callback: Callback function(is_open: bool)
+        """
+        self._door_callback = callback
 
 
 class AudioController(HardwareComponent):
