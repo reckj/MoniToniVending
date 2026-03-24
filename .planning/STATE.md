@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: milestone
 status: completed
-stopped_at: Completed 02.1-03-PLAN.md — UI screens dual-module update
+stopped_at: Completed 02.1-04-PLAN.md — Remaining caller migration, dual-relay complete
 last_updated: "2026-03-24T11:32:38.962Z"
 last_activity: "2026-03-24 - Executed 02.1-04: Remaining caller migration, dual-relay complete"
 progress:
