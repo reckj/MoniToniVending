@@ -137,12 +137,12 @@ async def main_async(args):
 async def test_hardware(hardware, logger):
     """Run basic hardware tests."""
     logger.info("Testing relay controller...")
-    if hardware.relay:
-        # Test relay 1
-        await hardware.relay.set_relay(1, True)
+    if hardware.relay_core:
+        # Test relay 1 on Core Module (motor/spindle)
+        await hardware.relay_core.set_relay(1, True)
         await asyncio.sleep(0.5)
-        await hardware.relay.set_relay(1, False)
-        logger.info("  Relay test complete")
+        await hardware.relay_core.set_relay(1, False)
+        logger.info("  Relay core test complete")
         
     logger.info("Testing LED controller...")
     if hardware.led:

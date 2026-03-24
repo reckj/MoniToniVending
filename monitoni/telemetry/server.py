@@ -73,6 +73,7 @@ class RelayControlRequest(BaseModel):
     pin: str
     channel: int
     state: bool
+    module: str = "core"  # "core" (8-CH motor/spindle) or "levels" (30-CH door locks)
 
 
 class LEDControlRequest(BaseModel):
@@ -301,22 +302,43 @@ class TelemetryServer:
         
         @self.app.post("/api/debug/relay")
         async def control_relay(request: RelayControlRequest):
-            """Control a specific relay (PIN required)."""
+            """Control a specific relay (PIN required).
+
+            Use module='core' for the 8-CH Core Module (motor/spindle) or
+            module='levels' for the 30-CH Levels Module (door locks).
+            """
             if not self._verify_pin(request.pin):
                 raise HTTPException(status_code=403, detail="Invalid PIN")
-            
-            if not self.hardware.relay:
-                raise HTTPException(status_code=503, detail="Relay controller not available")
-            
-            success = await self.hardware.relay.set_relay(request.channel, request.state)
-            
+
+            # Route to the correct relay module
+            if request.module == "levels":
+                relay_module = self.hardware.relay_levels
+                module_label = "levels"
+            else:
+                relay_module = self.hardware.relay_core
+                module_label = "core"
+
+            if not relay_module:
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"Relay {module_label} module not available"
+                )
+
+            success = await relay_module.set_relay(request.channel, request.state)
+
             if success:
                 await self._broadcast({
                     "type": "relay_change",
+                    "module": module_label,
                     "channel": request.channel,
                     "state": request.state
                 })
-                return {"success": True, "channel": request.channel, "state": request.state}
+                return {
+                    "success": True,
+                    "module": module_label,
+                    "channel": request.channel,
+                    "state": request.state
+                }
             else:
                 raise HTTPException(status_code=500, detail="Failed to set relay")
         
@@ -358,24 +380,41 @@ class TelemetryServer:
             return {"success": True}
         
         @self.app.post("/api/debug/test-relay-cascade")
-        async def test_relay_cascade(pin: str = Query(...)):
-            """Test all relays in sequence (PIN required)."""
+        async def test_relay_cascade(
+            pin: str = Query(...),
+            module: str = Query("core", regex="^(core|levels)$")
+        ):
+            """Test all relays in sequence (PIN required).
+
+            Use module=core for 8-CH Core Module or module=levels for 30-CH Levels Module.
+            """
             if not self._verify_pin(pin):
                 raise HTTPException(status_code=403, detail="Invalid PIN")
-            
-            if not self.hardware.relay:
-                raise HTTPException(status_code=503, detail="Relay controller not available")
-            
+
+            # Route to the correct relay module
+            if module == "levels":
+                relay_module = self.hardware.relay_levels
+                channel_count = 30
+            else:
+                relay_module = self.hardware.relay_core
+                channel_count = 8
+
+            if not relay_module:
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"Relay {module} module not available"
+                )
+
             # Run cascade test in background
             async def cascade():
-                for i in range(1, 33):
-                    await self.hardware.relay.set_relay(i, True)
+                for i in range(1, channel_count + 1):
+                    await relay_module.set_relay(i, True)
                     await asyncio.sleep(0.1)
-                    await self.hardware.relay.set_relay(i, False)
-            
+                    await relay_module.set_relay(i, False)
+
             asyncio.create_task(cascade())
-            
-            return {"success": True, "message": "Relay cascade test started"}
+
+            return {"success": True, "message": f"Relay cascade test started on {module} module"}
         
         @self.app.websocket("/ws")
         async def websocket_endpoint(websocket: WebSocket):

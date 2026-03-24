@@ -164,14 +164,23 @@ class MaintenanceScreen(BaseDebugSubScreen):
         else:
             status_items.append(("Mode:", "Operating", green))
 
-        # 2. Relay Status
+        # 2. Core Relay Module Status (8-CH: motor/spindle)
         try:
-            if self.hardware.relay and self.hardware.relay.is_connected():
-                status_items.append(("Relay:", "OK", green))
+            if self.hardware.relay_core and self.hardware.relay_core.is_connected():
+                status_items.append(("Core Relay:", "OK", green))
             else:
-                status_items.append(("Relay:", "ERROR", ERROR_RED))
+                status_items.append(("Core Relay:", "ERROR", ERROR_RED))
         except Exception:
-            status_items.append(("Relay:", "ERROR", ERROR_RED))
+            status_items.append(("Core Relay:", "ERROR", ERROR_RED))
+
+        # 3. Levels Relay Module Status (30-CH: door locks)
+        try:
+            if self.hardware.relay_levels and self.hardware.relay_levels.is_connected():
+                status_items.append(("Levels Relay:", "OK", green))
+            else:
+                status_items.append(("Levels Relay:", "ERROR", ERROR_RED))
+        except Exception:
+            status_items.append(("Levels Relay:", "ERROR", ERROR_RED))
 
         # 3. LED Status
         try:
