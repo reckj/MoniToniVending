@@ -164,7 +164,7 @@ class VendingApp(MDApp):
             
         # Unlock door for selected level
         level = self.state_machine.selected_level
-        if level and self.hardware.relay:
+        if level and self.hardware.relay_levels:
             await self.hardware.unlock_door(level)
             
     async def _on_door_alarm(self):

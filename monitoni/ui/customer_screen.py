@@ -114,27 +114,27 @@ class TurnButton(MDRaisedButton):
             
             try:
                 # Open spindle lock
-                if self.hardware.relay:
+                if self.hardware.relay_core:
                     import asyncio
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
-                    
+
                     # Open spindle lock (relay ON)
                     loop.run_until_complete(
-                        self.hardware.relay.set_relay(motor_cfg.spindle_lock_relay, True)
+                        self.hardware.relay_core.set_relay(motor_cfg.spindle_lock_relay, True)
                     )
                     self.logger.info(f"Spindle lock opened (relay {motor_cfg.spindle_lock_relay})")
-                    
+
                     # Wait before starting motor
                     time.sleep(motor_cfg.spindle_pre_delay_ms / 1000.0)
-                    
+
                     # Start motor (only if still pressing)
                     if self._is_turning:
                         loop.run_until_complete(
-                            self.hardware.relay.set_relay(motor_cfg.relay_channel, True)
+                            self.hardware.relay_core.set_relay(motor_cfg.relay_channel, True)
                         )
                         self.logger.info(f"Motor started (relay {motor_cfg.relay_channel})")
-                    
+
                     loop.close()
             except Exception as e:
                 self.logger.error(f"Motor start error: {e}")
@@ -161,29 +161,29 @@ class TurnButton(MDRaisedButton):
             motor_cfg = self.config.vending.motor
             
             try:
-                if self.hardware.relay:
+                if self.hardware.relay_core:
                     import asyncio
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
-                    
+
                     # Keep motor running for delay
                     time.sleep(motor_cfg.spin_delay_ms / 1000.0)
-                    
+
                     # Stop motor
                     loop.run_until_complete(
-                        self.hardware.relay.set_relay(motor_cfg.relay_channel, False)
+                        self.hardware.relay_core.set_relay(motor_cfg.relay_channel, False)
                     )
                     self.logger.info(f"Motor stopped (relay {motor_cfg.relay_channel})")
-                    
+
                     # Wait before closing spindle
                     time.sleep(motor_cfg.spindle_post_delay_ms / 1000.0)
-                    
+
                     # Close spindle lock (relay OFF)
                     loop.run_until_complete(
-                        self.hardware.relay.set_relay(motor_cfg.spindle_lock_relay, False)
+                        self.hardware.relay_core.set_relay(motor_cfg.spindle_lock_relay, False)
                     )
                     self.logger.info(f"Spindle lock closed (relay {motor_cfg.spindle_lock_relay})")
-                    
+
                     loop.close()
             except Exception as e:
                 self.logger.error(f"Motor stop error: {e}")
