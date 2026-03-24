@@ -2,7 +2,9 @@
 Sensor configuration and testing screen.
 
 Provides controls for:
+- Active method indicator (GPIO or Modbus Digital Input)
 - GPIO pin configuration (pin number, pull mode, active state)
+- Modbus DI info card (when method is modbus_di)
 - Live door state monitoring (200ms update rate)
 - Sensor info summary
 - Reset to factory defaults
@@ -35,9 +37,9 @@ class SensorSettingsScreen(BaseDebugSubScreen):
     Sensor configuration and testing screen.
 
     Allows operators to:
-    - Configure GPIO pin settings
-    - Set pull resistor mode (up/down)
-    - Set active state (low/high)
+    - View active sensor method (GPIO or Modbus DI) — read-only indicator
+    - Configure GPIO pin settings (fallback or active config)
+    - View Modbus DI info (when method is modbus_di)
     - Monitor live door state in real-time
     - View sensor info summary
     """
@@ -75,10 +77,107 @@ class SensorSettingsScreen(BaseDebugSubScreen):
             0.2  # 200ms update rate
         )
 
+    def _get_active_method(self) -> str:
+        """Return active sensor method string ('gpio' or 'modbus_di')."""
+        door_sensor_cfg = self.config_manager.config.hardware.door_sensor
+        if door_sensor_cfg is not None:
+            return door_sensor_cfg.method
+        return "gpio"
+
     def _build_content(self):
         """Build the sensor settings screen content."""
-        # Card 1: GPIO Configuration
-        gpio_card = SettingsCard(title="GPIO Configuration")
+        active_method = self._get_active_method()
+
+        # Card 0: Active Method Indicator
+        self._build_method_indicator_card(active_method)
+
+        # Card 1: GPIO Configuration (always visible — fallback config)
+        self._build_gpio_card(active_method)
+
+        # Card 2: Modbus DI Info (only when method is modbus_di)
+        if active_method == "modbus_di":
+            self._build_modbus_di_card()
+
+        # Card 3: Live Door Status (PROMINENT)
+        self._build_door_status_card()
+
+        # Card 4: Sensor Info
+        self._build_sensor_info_card()
+
+        # Reset button
+        reset_btn = MDRaisedButton(
+            text="Factory Reset",
+            size_hint_y=None,
+            height="60dp",
+            md_bg_color=(0.6, 0.3, 0.3, 1),
+            on_release=lambda x: self._reset_to_defaults()
+        )
+        self.add_content(reset_btn)
+
+    def _build_method_indicator_card(self, active_method: str):
+        """Build read-only active sensor method indicator card."""
+        card = SettingsCard(title="Sensor Method")
+
+        method_display = (
+            "Modbus Digital Input"
+            if active_method == "modbus_di"
+            else "GPIO"
+        )
+
+        method_row = BoxLayout(
+            orientation='horizontal',
+            size_hint_y=None,
+            height="50dp",
+            spacing="10dp",
+        )
+
+        method_label = MDLabel(
+            text="Active Method:",
+            size_hint_x=0.5,
+            font_style='Body1',
+        )
+        method_row.add_widget(method_label)
+
+        method_value = MDLabel(
+            text=method_display,
+            size_hint_x=0.5,
+            font_style='Body1',
+            bold=True,
+            theme_text_color='Custom',
+            text_color=CORAL_ACCENT,
+            halign='right',
+        )
+        method_row.add_widget(method_value)
+        card.add_content(method_row)
+
+        note_label = MDLabel(
+            text="(Change in config file)",
+            font_style='Caption',
+            size_hint_y=None,
+            height="24dp",
+            theme_text_color='Secondary',
+            halign='right',
+        )
+        card.add_content(note_label)
+
+        self.add_content(card)
+
+    def _build_gpio_card(self, active_method: str):
+        """Build GPIO configuration card (always visible)."""
+        gpio_title = "GPIO Configuration"
+        gpio_card = SettingsCard(title=gpio_title)
+
+        # When modbus_di is active, show a note that this is fallback config
+        if active_method == "modbus_di":
+            fallback_label = MDLabel(
+                text="Fallback configuration (currently using Modbus DI)",
+                font_style='Caption',
+                size_hint_y=None,
+                height="24dp",
+                theme_text_color='Secondary',
+                halign='left',
+            )
+            gpio_card.add_content(fallback_label)
 
         # Sensor pin (BCM)
         pin_field = NumpadField(
@@ -197,7 +296,102 @@ class SensorSettingsScreen(BaseDebugSubScreen):
 
         self.add_content(gpio_card)
 
-        # Card 2: Live Door Status (PROMINENT)
+    def _build_modbus_di_card(self):
+        """Build Modbus DI info card (shown only when method is modbus_di)."""
+        card = SettingsCard(title="Modbus DI Info")
+
+        door_sensor_cfg = self.config_manager.config.hardware.door_sensor
+        relay_core_cfg = self.config_manager.config.hardware.relay_core
+
+        # DI Index (read-only)
+        di_index = door_sensor_cfg.di_index if door_sensor_cfg else 0
+        di_row = BoxLayout(
+            orientation='horizontal',
+            size_hint_y=None,
+            height="40dp",
+            spacing="10dp",
+        )
+        di_row.add_widget(MDLabel(text="DI Index:", size_hint_x=0.5, font_style='Body2'))
+        di_row.add_widget(MDLabel(
+            text=str(di_index),
+            size_hint_x=0.5,
+            font_style='Body2',
+            halign='right',
+        ))
+        card.add_content(di_row)
+
+        # Poll Interval (read-only)
+        poll_ms = door_sensor_cfg.poll_interval_ms if door_sensor_cfg else 150
+        poll_row = BoxLayout(
+            orientation='horizontal',
+            size_hint_y=None,
+            height="40dp",
+            spacing="10dp",
+        )
+        poll_row.add_widget(MDLabel(text="Poll Interval:", size_hint_x=0.5, font_style='Body2'))
+        poll_row.add_widget(MDLabel(
+            text=f"{poll_ms}ms",
+            size_hint_x=0.5,
+            font_style='Body2',
+            halign='right',
+        ))
+        card.add_content(poll_row)
+
+        # Source Module (read-only)
+        source_row = BoxLayout(
+            orientation='horizontal',
+            size_hint_y=None,
+            height="40dp",
+            spacing="10dp",
+        )
+        source_row.add_widget(MDLabel(text="Source Module:", size_hint_x=0.5, font_style='Body2'))
+
+        # Connection status dot
+        core_connected = (
+            self.hardware.relay_core is not None
+            and self.hardware.relay_core.is_connected()
+        )
+        dot_color = (0, 0.85, 0.35, 1) if core_connected else (1, 0.2, 0.2, 1)
+        dot_label = MDLabel(
+            text="o",
+            font_style="H6",
+            size_hint_x=0.1,
+            halign="center",
+            theme_text_color="Custom",
+            text_color=dot_color,
+        )
+
+        source_label = MDLabel(
+            text="Core Module (8-CH)",
+            size_hint_x=0.4,
+            font_style='Body2',
+            halign='right',
+        )
+        source_row.add_widget(dot_label)
+        source_row.add_widget(source_label)
+        card.add_content(source_row)
+
+        # Host:Port from relay_core config
+        if relay_core_cfg:
+            host_port_row = BoxLayout(
+                orientation='horizontal',
+                size_hint_y=None,
+                height="40dp",
+                spacing="10dp",
+            )
+            host_port_row.add_widget(MDLabel(text="Host:Port:", size_hint_x=0.5, font_style='Body2'))
+            host_port_row.add_widget(MDLabel(
+                text=f"{relay_core_cfg.host}:{relay_core_cfg.port}",
+                size_hint_x=0.5,
+                font_style='Body2',
+                halign='right',
+            ))
+            card.add_content(host_port_row)
+
+        self.add_content(card)
+
+    def _build_door_status_card(self):
+        """Build live door status card with large status display."""
         status_card = SettingsCard(title="Live Door Status")
 
         # Large status display
@@ -238,10 +432,10 @@ class SensorSettingsScreen(BaseDebugSubScreen):
         )
 
         status_card.add_content(self.door_status_container)
-
         self.add_content(status_card)
 
-        # Card 3: Sensor Info
+    def _build_sensor_info_card(self):
+        """Build sensor info summary card."""
         info_card = SettingsCard(title="Sensor Info")
 
         # Info container
@@ -256,18 +450,7 @@ class SensorSettingsScreen(BaseDebugSubScreen):
         self._update_sensor_info()
 
         info_card.add_content(self.info_container)
-
         self.add_content(info_card)
-
-        # Reset button
-        reset_btn = MDRaisedButton(
-            text="Factory Reset",
-            size_hint_y=None,
-            height="60dp",
-            md_bg_color=(0.6, 0.3, 0.3, 1),
-            on_release=lambda x: self._reset_to_defaults()
-        )
-        self.add_content(reset_btn)
 
     def _set_pull_mode(self, mode: str):
         """Set pull resistor mode."""
@@ -342,34 +525,77 @@ class SensorSettingsScreen(BaseDebugSubScreen):
         self.info_container.clear_widgets()
 
         # Get current config
-        config = self.config_manager.config.hardware.gpio
+        gpio_config = self.config_manager.config.hardware.gpio
+        active_method = self._get_active_method()
 
-        # Pin info
-        pin_label = MDLabel(
-            text=f"Pin: GPIO {config.door_sensor_pin} (BCM)",
+        # Method
+        method_display = "Modbus Digital Input" if active_method == "modbus_di" else "GPIO"
+        method_label = MDLabel(
+            text=f"Method: {method_display}",
             size_hint_y=None,
             height="30dp",
-            font_style='Body2'
+            font_style='Body2',
+            theme_text_color='Custom',
+            text_color=CORAL_ACCENT,
         )
-        self.info_container.add_widget(pin_label)
+        self.info_container.add_widget(method_label)
 
-        # Pull mode
-        pull_label = MDLabel(
-            text=f"Pull: {config.door_sensor_pull.upper()}",
-            size_hint_y=None,
-            height="30dp",
-            font_style='Body2'
-        )
-        self.info_container.add_widget(pull_label)
+        if active_method == "modbus_di":
+            door_sensor_cfg = self.config_manager.config.hardware.door_sensor
+            relay_core_cfg = self.config_manager.config.hardware.relay_core
 
-        # Active state
-        active_label = MDLabel(
-            text=f"Active: {config.door_sensor_active.upper()}",
-            size_hint_y=None,
-            height="30dp",
-            font_style='Body2'
-        )
-        self.info_container.add_widget(active_label)
+            di_index = door_sensor_cfg.di_index if door_sensor_cfg else 0
+            poll_ms = door_sensor_cfg.poll_interval_ms if door_sensor_cfg else 150
+
+            di_label = MDLabel(
+                text=f"DI Index: {di_index}",
+                size_hint_y=None,
+                height="30dp",
+                font_style='Body2',
+            )
+            self.info_container.add_widget(di_label)
+
+            poll_label = MDLabel(
+                text=f"Poll: {poll_ms}ms",
+                size_hint_y=None,
+                height="30dp",
+                font_style='Body2',
+            )
+            self.info_container.add_widget(poll_label)
+
+            if relay_core_cfg:
+                source_label = MDLabel(
+                    text=f"Source: Core Module {relay_core_cfg.host}:{relay_core_cfg.port}",
+                    size_hint_y=None,
+                    height="30dp",
+                    font_style='Body2',
+                )
+                self.info_container.add_widget(source_label)
+        else:
+            # GPIO info
+            pin_label = MDLabel(
+                text=f"Pin: GPIO {gpio_config.door_sensor_pin} (BCM)",
+                size_hint_y=None,
+                height="30dp",
+                font_style='Body2'
+            )
+            self.info_container.add_widget(pin_label)
+
+            pull_label = MDLabel(
+                text=f"Pull: {gpio_config.door_sensor_pull.upper()}",
+                size_hint_y=None,
+                height="30dp",
+                font_style='Body2'
+            )
+            self.info_container.add_widget(pull_label)
+
+            active_label = MDLabel(
+                text=f"Active: {gpio_config.door_sensor_active.upper()}",
+                size_hint_y=None,
+                height="30dp",
+                font_style='Body2'
+            )
+            self.info_container.add_widget(active_label)
 
         # Connection status
         if self.hardware.sensor and self.hardware.sensor.is_connected():
@@ -436,10 +662,21 @@ class SensorSettingsScreen(BaseDebugSubScreen):
             self.door_status_bg_color.rgba = (0.1, 0.25, 0.1, 1)
 
     def _reset_to_defaults(self):
-        """Reset GPIO section to factory defaults."""
+        """Reset sensor settings to factory defaults."""
+        active_method = self._get_active_method()
+
+        reset_sections = ["hardware.gpio"]
+        reset_desc = "- GPIO pin, pull mode, active state"
+        if active_method == "modbus_di":
+            reset_sections.append("hardware.door_sensor")
+            reset_desc += "\n- Modbus DI sensor settings"
+
         def confirm_reset():
-            # Reset hardware.gpio section
-            success = reset_section_to_defaults(self.config_manager, "hardware.gpio")
+            success = True
+            for section in reset_sections:
+                ok = reset_section_to_defaults(self.config_manager, section)
+                if not ok:
+                    success = False
 
             if success:
                 self._show_reset_success()
@@ -448,7 +685,7 @@ class SensorSettingsScreen(BaseDebugSubScreen):
 
         show_confirm_dialog(
             title="Restore Factory Settings",
-            text="Reset all sensor settings to factory defaults?\n\nThis affects:\n- GPIO pin\n- Pull mode\n- Active state",
+            text=f"Reset all sensor settings to factory defaults?\n\nThis affects:\n{reset_desc}",
             on_confirm=confirm_reset
         )
 
