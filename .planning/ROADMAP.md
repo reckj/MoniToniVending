@@ -186,7 +186,7 @@ Phase 1 (Architecture)
 |-------|--------|-------|-------|
 | 1. Debug Screen Architecture | Complete ✓ | 2/2 | Verified 2026-02-06 |
 | 2. Settings Sub-screens | In Progress | 1/5 | Shared widget library complete |
-| 02.1 Dual Ethernet Relay Migration | 4/4 | Complete   | 2026-03-24 |
+| 02.1 Dual Ethernet Relay Migration | Complete ✓ | 4/4 | Verified 2026-03-24 |
 | 3. Setup Wizard | Planned | 0/3 | 3 plans in 3 waves |
 | 4. Maintenance Features | Complete ✓ | 2/2 | Verified 2026-03-23 |
 | 5. UI Polish & Hardware Testing | Not Started | 0/0 | |
