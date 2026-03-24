@@ -63,13 +63,13 @@ Plans:
 
 **Depends on:** Phase 2 (shared widgets)
 
-**Plans:** 2/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 02.1-01-PLAN.md — Modbus utils, TCP relay controller, digital input controller, config models
 - [x] 02.1-02-PLAN.md — HardwareManager dual relay routing and sensor method dispatch
-- [ ] 02.1-03-PLAN.md — UI screens: relay (dual-section), motor (relay_core), sensor (method indicator)
-- [ ] 02.1-04-PLAN.md — Caller migration: customer screen, app, telemetry, maintenance, main
+- [x] 02.1-03-PLAN.md — UI screens: relay (dual-section), motor (relay_core), sensor (method indicator)
+- [x] 02.1-04-PLAN.md — Caller migration: customer screen, app, telemetry, maintenance, main
 
 **Delivers:**
 - TCP socket transport for Modbus RTU alongside existing RS485 serial (configurable)
@@ -186,7 +186,7 @@ Phase 1 (Architecture)
 |-------|--------|-------|-------|
 | 1. Debug Screen Architecture | Complete ✓ | 2/2 | Verified 2026-02-06 |
 | 2. Settings Sub-screens | In Progress | 1/5 | Shared widget library complete |
-| 02.1 Dual Ethernet Relay Migration | 2/4 | In Progress|  |
+| 02.1 Dual Ethernet Relay Migration | 4/4 | Complete   | 2026-03-24 |
 | 3. Setup Wizard | Planned | 0/3 | 3 plans in 3 waves |
 | 4. Maintenance Features | Complete ✓ | 2/2 | Verified 2026-03-23 |
 | 5. UI Polish & Hardware Testing | Not Started | 0/0 | |

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: milestone
-status: executing
-stopped_at: Completed 02.1-02-PLAN.md — HardwareManager dual relay routing
-last_updated: "2026-03-23T18:57:43.719Z"
-last_activity: "2026-03-23 - Executed 02.1-01: Modbus TCP transport foundation"
+status: completed
+stopped_at: Completed 02.1-03-PLAN.md — UI screens dual-module update
+last_updated: "2026-03-24T11:32:38.962Z"
+last_activity: "2026-03-24 - Executed 02.1-04: Remaining caller migration, dual-relay complete"
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 16
-  completed_plans: 9
+  completed_plans: 11
 ---
 
 # MoniToniVending - Project State
@@ -22,22 +22,22 @@ progress:
 
 ## Current Position
 
-- **Phase:** 02.1 - Dual Ethernet Relay Migration (INSERTED)
-- **Plan:** 02.1-02 complete, 2 remaining (plans 03-04)
-- **Status:** In progress — plans 01-02 complete
-- **Last activity:** 2026-03-23 - Executed 02.1-02: HardwareManager dual relay routing
+- **Phase:** 02.1 - Dual Ethernet Relay Migration (COMPLETE)
+- **Plan:** All 4 plans complete (01-04)
+- **Status:** Phase 02.1 complete — resume Phase 02 (Settings Sub-screens) from plan 02-02
+- **Last activity:** 2026-03-24 - Executed 02.1-04: Remaining caller migration, dual-relay complete
 
 ## Progress
 
 ```
 Phase 1: Debug Screen Architecture  [==========] Complete ✓
 Phase 2: Settings Sub-screens       [========  ] 1/5 plans (20%)
-Phase 02.1: Dual Ethernet Relay     [====      ] 2/4 plans (50%)
+Phase 02.1: Dual Ethernet Relay     [==========] Complete ✓ (4/4 plans)
 Phase 3: Setup Wizard               [          ] Not Started
 Phase 4: Maintenance Features       [==========] Complete ✓
 Phase 5: UI Polish & Hardware Test  [          ] Not Started
 
-Overall: [=====.....] ~50%
+Overall: [███████░░░] 69%
 ```
 
 ## Recent Decisions
@@ -60,6 +60,8 @@ Overall: [=====.....] ~50%
 | DI sensor host/port taken from relay_core config (same physical device) | 2026-03-23 | 02.1-02 |
 | relay_levels absent config creates MockRelayController (not an error — module may not be wired yet) | 2026-03-23 | 02.1-02 |
 | self.relay backward-compat property returns relay_core to avoid breaking callers | 2026-03-23 | 02.1-02 |
+| Telemetry relay API defaults to module=core for backward compat with existing API clients | 2026-03-24 | 02.1-04 |
+| app.py door unlock guard uses relay_levels since unlock_door() routes through relay_levels internally | 2026-03-24 | 02.1-04 |
 
 ## Pending Todos
 
@@ -78,7 +80,7 @@ Overall: [=====.....] ~50%
 
 ## Session Continuity
 
-Last session: 2026-03-23T18:57:43.714Z
-Stopped at: Completed 02.1-02-PLAN.md — HardwareManager dual relay routing
+Last session: 2026-03-24T11:32:38.951Z
+Stopped at: Completed 02.1-03-PLAN.md — UI screens dual-module update
 Resume file: None
 Next: /gsd:execute-phase 02.1
