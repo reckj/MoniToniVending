@@ -2,10 +2,11 @@
 Motor settings and testing screen.
 
 Provides motor timing configuration, test functions, and live status.
+All relay operations route through relay_core (Core Module, 8-CH).
 """
 
 import asyncio
-from typing import Optional, List, Tuple
+from typing import List, Optional, Tuple
 
 from kivy.clock import Clock
 from kivy.uix.boxlayout import BoxLayout
@@ -14,8 +15,13 @@ from kivymd.uix.label import MDLabel
 
 from monitoni.ui.debug_screens.base import BaseDebugSubScreen
 from monitoni.ui.debug_screens.widgets import (
-    SettingsCard, HoldButton, NumpadField, LiveStatusCard,
-    show_confirm_dialog, reset_section_to_defaults, CORAL_ACCENT
+    CORAL_ACCENT,
+    HoldButton,
+    LiveStatusCard,
+    NumpadField,
+    SettingsCard,
+    reset_section_to_defaults,
+    show_confirm_dialog,
 )
 from monitoni.core.config import ConfigManager
 from monitoni.hardware.manager import HardwareManager
@@ -26,12 +32,12 @@ class MotorSettingsScreen(BaseDebugSubScreen):
     Motor configuration and testing screen.
 
     Provides:
-    - Motor and spindle relay channel configuration
+    - Motor and spindle relay channel configuration (Core Module channels)
     - Timing parameters (spin delay, spindle pre/post delay)
     - Full motor test sequence (hold-to-activate with spindle)
     - Individual component tests (motor only, spindle only)
     - Timing sequence visualization
-    - Live motor and spindle status
+    - Live motor and spindle status (Core Module)
     - Reset to defaults
     """
 
@@ -91,7 +97,7 @@ class MotorSettingsScreen(BaseDebugSubScreen):
             config_manager=self.config_manager,
             allow_decimal=False,
             min_value=1,
-            max_value=32,
+            max_value=8,  # Core Module has 8 channels
             on_value_changed=lambda v: self._update_timing_visualization()
         )
         card.add_content(motor_channel_field)
@@ -103,7 +109,7 @@ class MotorSettingsScreen(BaseDebugSubScreen):
             config_manager=self.config_manager,
             allow_decimal=False,
             min_value=1,
-            max_value=32,
+            max_value=8,  # Core Module has 8 channels
             on_value_changed=lambda v: self._update_timing_visualization()
         )
         card.add_content(spindle_channel_field)
@@ -208,18 +214,20 @@ class MotorSettingsScreen(BaseDebugSubScreen):
         self.add_content(card)
 
     def _get_timing_text(self) -> str:
-        """Generate timing sequence text."""
+        """Generate timing sequence text referencing Core Module channels."""
         config = self.config_manager.config.vending.motor
         pre_delay = config.spindle_pre_delay_ms
         post_delay = config.spindle_post_delay_ms
 
-        return f"""Sequence:
-1. Open spindle (Relay {config.spindle_lock_relay})
-2. Wait {pre_delay}ms
-3. Motor ON (Relay {config.relay_channel}) - while held
-4. Motor OFF
-5. Wait {post_delay}ms
-6. Close spindle"""
+        return (
+            f"Sequence (Core Module):\n"
+            f"1. Open spindle (Core CH{config.spindle_lock_relay})\n"
+            f"2. Wait {pre_delay}ms\n"
+            f"3. Motor ON (Core CH{config.relay_channel}) - while held\n"
+            f"4. Motor OFF\n"
+            f"5. Wait {post_delay}ms\n"
+            f"6. Close spindle"
+        )
 
     def _update_timing_visualization(self):
         """Update timing visualization text."""
@@ -229,35 +237,35 @@ class MotorSettingsScreen(BaseDebugSubScreen):
     def _build_status_card(self):
         """Build live motor and spindle status card."""
         async def get_motor_status() -> List[Tuple[str, str, Tuple[float, float, float, float]]]:
-            """Get status of motor and spindle relays (async)."""
-            if not self.hardware.relay:
-                return [("Motor", "Relay not connected", (1, 0, 0, 1))]
+            """Get status of motor and spindle relays from Core Module (async)."""
+            if not self.hardware.relay_core:
+                return [("Core Module", "Relay not connected", (1, 0, 0, 1))]
 
             status_items = []
             config = self.config_manager.config.vending.motor
 
-            # Motor relay
+            # Motor relay (Core Module)
             try:
-                motor_state = await self.hardware.relay.get_relay(config.relay_channel)
+                motor_state = await self.hardware.relay_core.get_relay(config.relay_channel)
                 state_text = "ON" if motor_state else "OFF"
                 color = (0, 1, 0, 1) if motor_state else (0.5, 0.5, 0.5, 1)
-                status_items.append((f"Motor (R{config.relay_channel})", state_text, color))
+                status_items.append((f"Core: Motor (CH{config.relay_channel})", state_text, color))
             except Exception:
-                status_items.append((f"Motor (R{config.relay_channel})", "ERROR", (1, 0, 0, 1)))
+                status_items.append((f"Core: Motor (CH{config.relay_channel})", "ERROR", (1, 0, 0, 1)))
 
-            # Spindle lock relay
+            # Spindle lock relay (Core Module)
             try:
-                spindle_state = await self.hardware.relay.get_relay(config.spindle_lock_relay)
+                spindle_state = await self.hardware.relay_core.get_relay(config.spindle_lock_relay)
                 state_text = "ON" if spindle_state else "OFF"
                 color = (0, 1, 0, 1) if spindle_state else (0.5, 0.5, 0.5, 1)
-                status_items.append((f"Spindle (R{config.spindle_lock_relay})", state_text, color))
+                status_items.append((f"Core: Spindle (CH{config.spindle_lock_relay})", state_text, color))
             except Exception:
-                status_items.append((f"Spindle (R{config.spindle_lock_relay})", "ERROR", (1, 0, 0, 1)))
+                status_items.append((f"Core: Spindle (CH{config.spindle_lock_relay})", "ERROR", (1, 0, 0, 1)))
 
             return status_items
 
         status_card = LiveStatusCard(
-            title="Motor Status",
+            title="Motor Status (Core Module)",
             get_status_callback=get_motor_status,
             update_interval=0.5
         )
@@ -288,7 +296,7 @@ class MotorSettingsScreen(BaseDebugSubScreen):
 
     def _start_motor_test(self):
         """Start full motor test with spindle sequence."""
-        if not self._motor_test_running and self.hardware.relay:
+        if not self._motor_test_running and self.hardware.relay_core:
             self._motor_test_running = True
             asyncio.create_task(self._run_motor_sequence())
 
@@ -310,8 +318,8 @@ class MotorSettingsScreen(BaseDebugSubScreen):
         try:
             config = self.config_manager.config.vending.motor
 
-            # Step 1: Open spindle lock
-            await self.hardware.relay.set_relay(config.spindle_lock_relay, True)
+            # Step 1: Open spindle lock (Core Module)
+            await self.hardware.relay_core.set_relay(config.spindle_lock_relay, True)
             self._spindle_open = True
 
             # Step 2: Wait pre-delay
@@ -319,7 +327,7 @@ class MotorSettingsScreen(BaseDebugSubScreen):
 
             # Step 3: Activate motor (will run while held)
             if self._motor_test_running:
-                await self.hardware.relay.set_relay(config.relay_channel, True)
+                await self.hardware.relay_core.set_relay(config.relay_channel, True)
 
         except Exception as e:
             print(f"Motor sequence error: {e}")
@@ -330,42 +338,42 @@ class MotorSettingsScreen(BaseDebugSubScreen):
         try:
             config = self.config_manager.config.vending.motor
 
-            # Step 1: Deactivate motor immediately
-            await self.hardware.relay.set_relay(config.relay_channel, False)
+            # Step 1: Deactivate motor immediately (Core Module)
+            await self.hardware.relay_core.set_relay(config.relay_channel, False)
 
             # Step 2: Wait post-delay
             await asyncio.sleep(config.spindle_post_delay_ms / 1000.0)
 
-            # Step 3: Close spindle lock
-            await self.hardware.relay.set_relay(config.spindle_lock_relay, False)
+            # Step 3: Close spindle lock (Core Module)
+            await self.hardware.relay_core.set_relay(config.spindle_lock_relay, False)
             self._spindle_open = False
 
         except Exception as e:
             print(f"Motor shutdown error: {e}")
 
     def _activate_spindle(self):
-        """Activate spindle lock relay only."""
-        if self.hardware.relay:
+        """Activate spindle lock relay on Core Module."""
+        if self.hardware.relay_core:
             config = self.config_manager.config.vending.motor
-            asyncio.create_task(self.hardware.relay.set_relay(config.spindle_lock_relay, True))
+            asyncio.create_task(self.hardware.relay_core.set_relay(config.spindle_lock_relay, True))
 
     def _deactivate_spindle(self):
-        """Deactivate spindle lock relay only."""
-        if self.hardware.relay:
+        """Deactivate spindle lock relay on Core Module."""
+        if self.hardware.relay_core:
             config = self.config_manager.config.vending.motor
-            asyncio.create_task(self.hardware.relay.set_relay(config.spindle_lock_relay, False))
+            asyncio.create_task(self.hardware.relay_core.set_relay(config.spindle_lock_relay, False))
 
     def _activate_motor(self):
-        """Activate motor relay only (direct test)."""
-        if self.hardware.relay:
+        """Activate motor relay on Core Module (direct test)."""
+        if self.hardware.relay_core:
             config = self.config_manager.config.vending.motor
-            asyncio.create_task(self.hardware.relay.set_relay(config.relay_channel, True))
+            asyncio.create_task(self.hardware.relay_core.set_relay(config.relay_channel, True))
 
     def _deactivate_motor(self):
-        """Deactivate motor relay only (direct test)."""
-        if self.hardware.relay:
+        """Deactivate motor relay on Core Module (direct test)."""
+        if self.hardware.relay_core:
             config = self.config_manager.config.vending.motor
-            asyncio.create_task(self.hardware.relay.set_relay(config.relay_channel, False))
+            asyncio.create_task(self.hardware.relay_core.set_relay(config.relay_channel, False))
 
     def on_pre_leave(self, *args):
         """Safety: deactivate motor and spindle when leaving screen."""
@@ -374,8 +382,8 @@ class MotorSettingsScreen(BaseDebugSubScreen):
         # Stop any running motor test
         self._stop_motor_test()
 
-        # Ensure both relays are off
-        if self.hardware.relay:
+        # Ensure both relays are off (Core Module)
+        if self.hardware.relay_core:
             config = self.config_manager.config.vending.motor
-            asyncio.create_task(self.hardware.relay.set_relay(config.relay_channel, False))
-            asyncio.create_task(self.hardware.relay.set_relay(config.spindle_lock_relay, False))
+            asyncio.create_task(self.hardware.relay_core.set_relay(config.relay_channel, False))
+            asyncio.create_task(self.hardware.relay_core.set_relay(config.spindle_lock_relay, False))
