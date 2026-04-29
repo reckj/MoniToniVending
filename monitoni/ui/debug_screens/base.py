@@ -109,3 +109,40 @@ class BaseDebugSubScreen(Screen):
             widget: The widget to add to the scrollable content
         """
         self.content.add_widget(widget)
+
+    # ------------------------------------------------------------------
+    # Lifecycle: pause/resume LiveStatusCard children with the screen.
+    #
+    # All BaseDebugSubScreen subclasses are instantiated once at app
+    # startup and reused across navigations. Without explicit cleanup,
+    # any LiveStatusCard child polls forever — every tick destroys and
+    # recreates MDLabel widgets and (for async callbacks) spawns asyncio
+    # tasks. Over minutes this saturates the Kivy clock + asyncio event
+    # loop and the UI degrades. Walking the subtree once per screen
+    # transition is cheap and bounds the runtime cost to "polls only
+    # while the user is looking at this screen".
+    # ------------------------------------------------------------------
+
+    def _walk_live_status_cards(self):
+        """Yield every LiveStatusCard descendant of this screen."""
+        # Local import to avoid a circular import at module load time
+        # (widgets.py does not depend on base.py, but base.py is imported
+        # very early during BaseDebugSubScreen subclass construction).
+        from monitoni.ui.debug_screens.widgets import LiveStatusCard
+
+        # Widget.walk yields self and all descendants depth-first.
+        for w in self.walk(restrict=True):
+            if isinstance(w, LiveStatusCard):
+                yield w
+
+    def on_pre_enter(self, *args):
+        """Resume polling on every LiveStatusCard child when shown."""
+        super().on_pre_enter(*args)
+        for card in self._walk_live_status_cards():
+            card.start_polling()
+
+    def on_pre_leave(self, *args):
+        """Pause polling on every LiveStatusCard child when hidden."""
+        super().on_pre_leave(*args)
+        for card in self._walk_live_status_cards():
+            card.stop_polling()

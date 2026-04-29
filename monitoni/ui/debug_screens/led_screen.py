@@ -655,6 +655,7 @@ class LEDSettingsScreen(BaseDebugSubScreen):
 
     def on_pre_leave(self, *args):
         """Cleanup when leaving screen."""
+        super().on_pre_leave(*args)
         # Cancel any pending zone test tasks
         for task in self._zone_test_tasks:
             if not task.done():

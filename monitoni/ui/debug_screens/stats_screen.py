@@ -449,5 +449,6 @@ class StatsSettingsScreen(BaseDebugSubScreen):
 
     def on_pre_leave(self, *args):
         """Cleanup when leaving screen."""
-        # No polling to cancel - all data loaded on-demand
-        pass
+        super().on_pre_leave(*args)
+        # No subclass-specific polling to cancel - all data loaded on-demand
+        # (super().on_pre_leave handles LiveStatusCard children, if any)

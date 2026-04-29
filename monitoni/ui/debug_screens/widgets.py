@@ -553,11 +553,58 @@ class LiveStatusCard(MDCard):
         # Build UI
         self._build_ui(title)
 
-        # Schedule status updates with lambda for strong reference
+        # Polling state — managed via start_polling/stop_polling.
+        #
+        # IMPORTANT: We deliberately do NOT auto-start polling here. When
+        # added to a BaseDebugSubScreen, that screen drives polling via
+        # on_pre_enter (start) / on_pre_leave (stop) so the card only
+        # consumes Kivy clock + asyncio resources while its parent screen
+        # is visible. Auto-starting in __init__ used to leak: every debug
+        # sub-screen is instantiated once at app startup and reused, so
+        # a card that starts at __init__ runs every interval forever,
+        # churning MDLabel widgets / textures and (for async callbacks)
+        # spawning asyncio tasks even when the screen is hidden.
+        self._update_event = None
+        # Track in-flight async update task so we never have more than one
+        # outstanding async callback per card (prevents pile-up when the
+        # async callback is slower than the update interval).
+        self._inflight_async_task: Optional[asyncio.Task] = None
+
+    def start_polling(self):
+        """
+        Start (or resume) periodic status polling.
+
+        Idempotent: calling when already polling is a no-op. Designed to be
+        called from BaseDebugSubScreen.on_pre_enter so the card only consumes
+        Kivy clock + asyncio resources while its parent screen is visible.
+        """
+        if self._update_event is not None:
+            return
+        # Lambda keeps a strong reference to self via closure, but the
+        # ClockEvent handle is what we use to cancel — so we keep that.
         self._update_event = Clock.schedule_interval(
             lambda dt: self._update_status(),
-            update_interval
+            self.update_interval
         )
+
+    def stop_polling(self):
+        """
+        Stop periodic status polling and cancel any in-flight async update.
+
+        Idempotent. Designed to be called from BaseDebugSubScreen.on_pre_leave
+        to bound resource consumption while the screen is not visible.
+        """
+        if self._update_event is not None:
+            self._update_event.cancel()
+            self._update_event = None
+        # Cancel any in-flight async callback so we don't leak a Task that
+        # outlives the card's visible lifetime.
+        if (
+            self._inflight_async_task is not None
+            and not self._inflight_async_task.done()
+        ):
+            self._inflight_async_task.cancel()
+        self._inflight_async_task = None
 
     def _build_ui(self, title: str):
         """Build the status card UI."""
@@ -594,8 +641,21 @@ class LiveStatusCard(MDCard):
         try:
             # Call the status callback
             if inspect.iscoroutinefunction(self.get_status_callback):
-                # Async callback: schedule via asyncio
-                asyncio.create_task(self._update_status_async())
+                # Async callback: schedule via asyncio. Skip if a previous
+                # async update is still in flight — otherwise tasks pile up
+                # whenever the callback is slower than self.update_interval
+                # (e.g. modbus read backlog, slow WLED HTTP), which leaks
+                # asyncio Task objects and saturates the event loop.
+                if (
+                    self._inflight_async_task is not None
+                    and not self._inflight_async_task.done()
+                ):
+                    return
+                # Keep a strong reference so the Task is not GC'd mid-await
+                # (asyncio.create_task warns about this in the docs).
+                self._inflight_async_task = asyncio.create_task(
+                    self._update_status_async()
+                )
             else:
                 # Sync callback: call directly
                 status_items = self.get_status_callback()
@@ -652,14 +712,22 @@ class LiveStatusCard(MDCard):
             self.status_container.add_widget(row)
 
     def on_pre_leave(self, *args):
-        """Cancel scheduled updates when widget is removed."""
-        if hasattr(self, '_update_event') and self._update_event:
-            self._update_event.cancel()
+        """
+        Cancel scheduled updates.
+
+        NOTE: Kivy ScreenManager only dispatches Screen lifecycle events
+        (on_pre_enter / on_enter / on_pre_leave / on_leave) to the Screen
+        instance itself — never to child widgets. Because LiveStatusCard
+        is an MDCard inside a Screen, this method is NOT invoked
+        automatically by Kivy. It is kept as a manual hook only. The real
+        teardown path is the parent screen's on_pre_leave calling
+        stop_polling() on this card explicitly.
+        """
+        self.stop_polling()
 
     def cleanup(self):
         """Explicit cleanup method for manual cleanup."""
-        if hasattr(self, '_update_event') and self._update_event:
-            self._update_event.cancel()
+        self.stop_polling()
 
 
 class NumpadField(BoxLayout):

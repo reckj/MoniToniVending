@@ -721,6 +721,7 @@ class SensorSettingsScreen(BaseDebugSubScreen):
 
     def on_pre_leave(self, *args):
         """Cleanup when leaving screen."""
+        super().on_pre_leave(*args)
         # Cancel Clock update event
         if self._update_event:
             self._update_event.cancel()

@@ -13,3 +13,8 @@ purchase_server:
   
 telemetry:
   debug_pin: "your-secure-pin"  # Change this!
+
+# Network interface identifiers (machine-specific; never commit real values)
+network:
+  eth0:
+    mac_address: "aa:bb:cc:dd:ee:ff"  # Read with: cat /sys/class/net/eth0/address

@@ -664,6 +664,7 @@ class NetworkSettingsScreen(BaseDebugSubScreen):
 
     def on_pre_leave(self, *args):
         """Cancel network status polling when leaving screen."""
+        super().on_pre_leave(*args)
         if self._network_status_event:
             self._network_status_event.cancel()
             self._network_status_event = None
