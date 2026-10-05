@@ -132,23 +132,32 @@ telemetry:
 
 ### 3. Hardware Configuration
 
-#### Modbus Relay
+#### Relay Modules
 
-Identify your RS485 serial port:
-
-```bash
-ls /dev/ttyUSB*
-# or
-ls /dev/ttyAMA*
-```
-
-Update in `config/local.yaml`:
+Two independent Waveshare Ethernet relay modules are driven over Modbus
+RTU-over-TCP in transparent mode. Configure each with its own static IP
+and point the app at them in `config/local.yaml`:
 
 ```yaml
 hardware:
-  modbus:
-    port: "/dev/ttyUSB0"  # Your serial port
+  relay_core:              # 8-CH module (motor, spindle, door locks, DIs)
+    transport: tcp
+    host: 10.21.56.29
+    port: 502
+  relay_levels:            # 30-CH module (vending level relays)
+    transport: tcp
+    host: 10.21.56.30
+    port: 502
 ```
+
+**Waveshare port note:** the factory default is **TCP 4196** in
+transparent server mode. Either leave the module on 4196 and set
+`port: 4196` here, or reconfigure the module to port 502 via its web UI
+(`http://<module-ip>`). Both work — the app always speaks raw Modbus RTU
+frames over the socket; only the port number matters.
+
+An RS485 fallback is still available by setting `transport: serial` and
+providing `serial_port` / `baudrate` instead of `host` / `port`.
 
 #### WLED LED Controller
 
@@ -156,14 +165,36 @@ hardware:
 2. Enable ArtNet in WLED settings
 3. Update IP address in `config/local.yaml`
 
-#### GPIO Door Sensor
+#### Door Sensor
 
-Default configuration uses BCM pin 17. To change:
+Two methods are supported, selected by `hardware.door_sensor.method`:
+
+**Modbus DI (recommended when a Waveshare 8-CH Ethernet relay module is
+present).** Reads the door sensor from a discrete input on the
+`relay_core` module. The `di_index` is the Modbus address (0-based) of
+the DI channel — note that Waveshare silkscreens are 1-indexed, so the
+physical terminal labelled `DI1` is `di_index: 0`.
 
 ```yaml
 hardware:
+  door_sensor:
+    method: modbus_di
+    di_index: 0            # Modbus address (physical terminal "DI1" = 0)
+    di_active: low         # "low" = DI HIGH when door closed (inverted wiring)
+    poll_interval_ms: 150
+    debounce_count: 2      # consecutive matching reads before a state change is accepted
+```
+
+**GPIO (legacy, for the RPi header).**
+
+```yaml
+hardware:
+  door_sensor:
+    method: gpio
   gpio:
-    door_sensor_pin: 17  # BCM pin number
+    door_sensor_pin: 5     # BCM pin number
+    door_sensor_pull: up
+    door_sensor_active: low
 ```
 
 ### 4. Add Sound Files

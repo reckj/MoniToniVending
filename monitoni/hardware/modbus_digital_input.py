@@ -45,6 +45,8 @@ class ModbusDigitalInputController(DigitalInputController):
         timeout: float = 1.0,
         door_di_index: int = 0,
         poll_interval_ms: int = 150,
+        door_active_high: bool = True,
+        debounce_count: int = 1,
     ):
         """
         Initialize Modbus digital input controller.
@@ -56,6 +58,11 @@ class ModbusDigitalInputController(DigitalInputController):
             timeout: Connection and read timeout in seconds
             door_di_index: DI channel index (0-indexed) mapped to door sensor
             poll_interval_ms: How often to poll DI state (0 = disable polling)
+            door_active_high: True → DI HIGH means door OPEN (default).
+                              False → DI HIGH means door CLOSED (inverted wiring).
+            debounce_count: Number of consecutive matching reads required before
+                            accepting a door state change (filters contact bounce).
+                            1 = no debounce.
         """
         super().__init__("ModbusDigitalInput", door_di_index=door_di_index)
         self.host = host
@@ -63,6 +70,10 @@ class ModbusDigitalInputController(DigitalInputController):
         self.slave_address = slave_address
         self.timeout = timeout
         self.poll_interval_ms = poll_interval_ms
+        self._door_active_high = door_active_high
+        self._debounce_count = max(1, debounce_count)
+        self._pending_state: Optional[bool] = None
+        self._pending_count: int = 0
 
         self._reader: Optional[asyncio.StreamReader] = None
         self._writer: Optional[asyncio.StreamWriter] = None
@@ -206,6 +217,42 @@ class ModbusDigitalInputController(DigitalInputController):
         else:
             return None
 
+    def _interpret_door(self, raw: Optional[bool]) -> Optional[bool]:
+        """Translate raw DI electrical state into door-open semantics."""
+        if raw is None:
+            return None
+        return raw if self._door_active_high else not raw
+
+    def _debounce(self, candidate: Optional[bool]) -> Optional[bool]:
+        """
+        Return a state only once it has been observed `debounce_count` times
+        in a row. Any mismatch resets the counter. On read errors (None), the
+        last confirmed state is held (returns None → caller treats as no change).
+        """
+        if candidate is None:
+            self._pending_state = None
+            self._pending_count = 0
+            return None
+        if candidate == self._last_door_state:
+            self._pending_state = None
+            self._pending_count = 0
+            return self._last_door_state
+        if candidate == self._pending_state:
+            self._pending_count += 1
+        else:
+            self._pending_state = candidate
+            self._pending_count = 1
+        if self._pending_count >= self._debounce_count:
+            self._pending_count = 0
+            self._pending_state = None
+            return candidate
+        return self._last_door_state
+
+    async def get_door_state(self) -> Optional[bool]:
+        """Return True if door open, False if closed, applying active-level inversion."""
+        raw = await self.read_digital_input(self._door_di_index)
+        return self._interpret_door(raw)
+
     async def _poll_loop(self) -> None:
         """
         Background task: poll door DI channel at configured interval.
@@ -215,12 +262,23 @@ class ModbusDigitalInputController(DigitalInputController):
         while True:
             try:
                 if self.is_connected():
-                    state = await self.read_digital_input(self._door_di_index)
-                    if state is not None and state != self._last_door_state:
-                        self._last_door_state = state
+                    raw = await self.read_digital_input(self._door_di_index)
+                    door_open = self._interpret_door(raw)
+                    confirmed = self._debounce(door_open)
+                    if confirmed is not None and confirmed != self._last_door_state:
+                        self._last_door_state = confirmed
+                        logger.info(
+                            f"ModbusDigitalInput door state: "
+                            f"{'OPEN' if confirmed else 'CLOSED'} "
+                            f"(DI{self._door_di_index}, "
+                            f"active_high={self._door_active_high})"
+                        )
                         if self._door_callback is not None:
                             try:
-                                self._door_callback(state)
+                                if asyncio.iscoroutinefunction(self._door_callback):
+                                    asyncio.create_task(self._door_callback(confirmed))
+                                else:
+                                    self._door_callback(confirmed)
                             except Exception as cb_err:
                                 logger.error(
                                     f"ModbusDigitalInput door callback error: {cb_err}"
@@ -299,6 +357,7 @@ class ModbusDigitalInputController(DigitalInputController):
             "last_error": self.last_error,
             "poll_interval_ms": self.poll_interval_ms,
             "door_di_index": self._door_di_index,
+            "door_active_high": self._door_active_high,
         }
 
 

@@ -87,110 +87,80 @@ class TurnButton(MDRaisedButton):
         self.elevation = 0  # Flat design
 
         self._is_turning = False
-        self._motor_task = None
+        self._start_task: asyncio.Task | None = None
 
         # Bind touch events
         self.bind(on_touch_down=self._on_press)
         self.bind(on_touch_up=self._on_release)
-        
+
     def _on_press(self, instance, touch):
         """Handle button press - start motor sequence."""
         if not self.collide_point(*touch.pos):
             return False
-            
+
         if self._is_turning:
             return True
-            
+
         self._is_turning = True
         self.md_bg_color = (0.1, 0.1, 0.1, 1)  # Dark while active
         self.text = "•••"
-        
-        # Start motor sequence in background
-        import threading
-        
-        def start_motor_sequence():
-            import time
-            motor_cfg = self.config.vending.motor
-            
-            try:
-                # Open spindle lock
-                if self.hardware.relay_core:
-                    import asyncio
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
 
-                    # Open spindle lock (relay ON)
-                    loop.run_until_complete(
-                        self.hardware.relay_core.set_relay(motor_cfg.spindle_lock_relay, True)
-                    )
-                    self.logger.info(f"Spindle lock opened (relay {motor_cfg.spindle_lock_relay})")
+        if self.hardware.relay_core:
+            self._start_task = asyncio.create_task(self._run_start_sequence())
 
-                    # Wait before starting motor
-                    time.sleep(motor_cfg.spindle_pre_delay_ms / 1000.0)
-
-                    # Start motor (only if still pressing)
-                    if self._is_turning:
-                        loop.run_until_complete(
-                            self.hardware.relay_core.set_relay(motor_cfg.relay_channel, True)
-                        )
-                        self.logger.info(f"Motor started (relay {motor_cfg.relay_channel})")
-
-                    loop.close()
-            except Exception as e:
-                self.logger.error(f"Motor start error: {e}")
-        
-        self._motor_task = threading.Thread(target=start_motor_sequence, daemon=True)
-        self._motor_task.start()
-        
         return True
-        
+
     def _on_release(self, instance, touch):
         """Handle button release - stop motor sequence."""
         if not self._is_turning:
             return False
-            
+
         self._is_turning = False
         self.md_bg_color = (0.95, 0.25, 0.2, 1)  # Back to coral
         self.text = "TURN"
 
-        # Stop motor sequence in background
-        import threading
-        
-        def stop_motor_sequence():
-            import time
-            motor_cfg = self.config.vending.motor
-            
-            try:
-                if self.hardware.relay_core:
-                    import asyncio
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
+        if self.hardware.relay_core:
+            asyncio.create_task(self._run_stop_sequence())
 
-                    # Keep motor running for delay
-                    time.sleep(motor_cfg.spin_delay_ms / 1000.0)
-
-                    # Stop motor
-                    loop.run_until_complete(
-                        self.hardware.relay_core.set_relay(motor_cfg.relay_channel, False)
-                    )
-                    self.logger.info(f"Motor stopped (relay {motor_cfg.relay_channel})")
-
-                    # Wait before closing spindle
-                    time.sleep(motor_cfg.spindle_post_delay_ms / 1000.0)
-
-                    # Close spindle lock (relay OFF)
-                    loop.run_until_complete(
-                        self.hardware.relay_core.set_relay(motor_cfg.spindle_lock_relay, False)
-                    )
-                    self.logger.info(f"Spindle lock closed (relay {motor_cfg.spindle_lock_relay})")
-
-                    loop.close()
-            except Exception as e:
-                self.logger.error(f"Motor stop error: {e}")
-        
-        threading.Thread(target=stop_motor_sequence, daemon=True).start()
-        
         return True
+
+    async def _run_start_sequence(self):
+        """Open spindle, wait pre-delay, start motor if still held."""
+        motor_cfg = self.config.vending.motor
+        try:
+            await self.hardware.relay_core.set_relay(motor_cfg.spindle_lock_relay, True)
+            self.logger.info(f"Spindle lock opened (relay {motor_cfg.spindle_lock_relay})")
+
+            await asyncio.sleep(motor_cfg.spindle_pre_delay_ms / 1000.0)
+
+            if self._is_turning:
+                await self.hardware.relay_core.set_relay(motor_cfg.relay_channel, True)
+                self.logger.info(f"Motor started (relay {motor_cfg.relay_channel})")
+        except Exception as e:
+            self.logger.error(f"Motor start error: {e}")
+
+    async def _run_stop_sequence(self):
+        """Wait for start to finish, hold motor, then stop and close spindle."""
+        motor_cfg = self.config.vending.motor
+        try:
+            # Ensure start finished before we stop — avoids ordering races.
+            if self._start_task is not None:
+                try:
+                    await self._start_task
+                except Exception:
+                    pass
+
+            await asyncio.sleep(motor_cfg.spin_delay_ms / 1000.0)
+
+            await self.hardware.relay_core.set_relay(motor_cfg.relay_channel, False)
+            self.logger.info(f"Motor stopped (relay {motor_cfg.relay_channel})")
+
+            await asyncio.sleep(motor_cfg.spindle_post_delay_ms / 1000.0)
+
+            await self.hardware.relay_core.set_relay(motor_cfg.spindle_lock_relay, False)
+            self.logger.info(f"Spindle lock closed (relay {motor_cfg.spindle_lock_relay})")
+        except Exception as e:
+            self.logger.error(f"Motor stop error: {e}")
 
 class StatusCard(MDCard):
     """Card displaying current status."""

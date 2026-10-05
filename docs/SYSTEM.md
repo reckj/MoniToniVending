@@ -138,13 +138,22 @@ class HardwareComponent(ABC):
     def get_status() -> Dict
 ```
 
-### Modbus Relay Controller (`monitoni/hardware/modbus_relay.py`)
+### Relay Controllers
 
-- **Protocol**: Modbus RTU over RS485
-- **Channels**: 32 relay channels
-- **Operations**: Individual channel control, bulk operations
-- **Motor control**: Timed activation with configurable delay
-- **Door locks**: Per-level lock control (10 levels)
+The system drives two independent Waveshare Ethernet relay modules over
+Modbus RTU-over-TCP (transparent mode, raw RTU frames with CRC — see
+`monitoni/hardware/modbus_tcp_relay.py`). A legacy RS485 controller
+(`monitoni/hardware/modbus_relay.py`) is still available as a fallback.
+
+- **relay_core** (8-CH module, also carries digital inputs): motor,
+  spindle lock, per-level door locks.
+- **relay_levels** (30-CH module, outputs only): vending level relays.
+
+Both are configured independently in `config/local.yaml` under
+`hardware.relay_core` and `hardware.relay_levels` (`host`, `port`,
+`slave_address`, `max_channels`). Each controller maintains a persistent
+TCP connection with background reconnect and a per-controller asyncio
+lock so concurrent callers serialize correctly.
 
 ### WLED LED Controller (`monitoni/hardware/wled_controller.py`)
 
@@ -154,12 +163,24 @@ class HardwareComponent(ABC):
 - **Animations**: Rainbow chase, breathing, flash, solid colors
 - **Brightness control**: Global and per-zone
 
-### GPIO Sensor Controller (`monitoni/hardware/gpio_sensors.py`)
+### Door Sensor Controllers
 
-- **Interface**: RPi.GPIO (BCM mode)
-- **Door sensor**: Limit switch with configurable pull resistor
-- **Event-driven**: Non-blocking callbacks for state changes
-- **Debouncing**: 50ms debounce time
+The door sensor can be read via one of two methods, selected by
+`hardware.door_sensor.method`:
+
+- **`modbus_di`** (`monitoni/hardware/modbus_digital_input.py`): reads a
+  discrete input on the `relay_core` module via Modbus FC02 on the same
+  TCP socket family as the relays. Supports `di_index`, inverted wiring
+  via `di_active: "low" | "high"` (low = DI HIGH means door closed), a
+  configurable `poll_interval_ms`, and a `debounce_count` that requires
+  N consecutive matching reads before accepting a state change — enough
+  to filter contact bounce from reed/micro switches without noticeable
+  latency.
+- **`gpio`** (`monitoni/hardware/gpio_sensors.py`): legacy RPi.GPIO
+  (BCM mode) with configurable pull resistor and active level.
+
+Both expose the same `set_door_callback(callback)` interface and may
+register either sync or async callbacks.
 
 ### Audio Controller (`monitoni/hardware/audio.py`)
 

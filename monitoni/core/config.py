@@ -75,7 +75,9 @@ class DoorSensorConfig(BaseModel):
     gpio_pull: str = "up"
     gpio_active: str = "low"
     di_index: int = 0                    # DI channel index on the Modbus module
+    di_active: str = "high"              # "high" = DI HIGH when door open; "low" = DI HIGH when door closed
     poll_interval_ms: int = 150
+    debounce_count: int = 2              # require N consecutive matching reads before accepting state change
 
 
 class HardwareConfig(BaseModel):

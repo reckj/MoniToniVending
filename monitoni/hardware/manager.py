@@ -274,6 +274,9 @@ class HardwareManager:
 
                 di_index = door_sensor_cfg.di_index if door_sensor_cfg else 0
                 poll_interval_ms = door_sensor_cfg.poll_interval_ms if door_sensor_cfg else 150
+                di_active = door_sensor_cfg.di_active if door_sensor_cfg else "high"
+                door_active_high = di_active.lower() != "low"
+                debounce_count = door_sensor_cfg.debounce_count if door_sensor_cfg else 1
 
                 try:
                     self.sensor = ModbusDigitalInputController(
@@ -283,6 +286,8 @@ class HardwareManager:
                         timeout=relay_core_cfg.timeout,
                         door_di_index=di_index,
                         poll_interval_ms=poll_interval_ms,
+                        door_active_high=door_active_high,
+                        debounce_count=debounce_count,
                     )
                 except ImportError:
                     logger.warning("Modbus library not available for DI sensor, using mock")
